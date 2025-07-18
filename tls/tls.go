@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var certBasePath = "/etc/letsencrypt/live"
+var certBasePath = "/certs"
 
 // getCertificateFunc dynamically loads a certificate for the given domain
 func getCertificateFunc() func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
@@ -72,13 +72,9 @@ func ServeWithTLS(handler http.Handler) {
 }
 
 func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/api/routes") {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("HTTP access allowed for /api/routes"))
-		return
+	if !strings.HasPrefix(r.URL.Path, "/api/routes") {
+		host := strings.Split(r.Host, ":")[0]
+		target := "https://" + host + r.URL.RequestURI()
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
 	}
-
-	host := strings.Split(r.Host, ":")[0]
-	target := "https://" + host + r.URL.RequestURI()
-	http.Redirect(w, r, target, http.StatusMovedPermanently)
 }
