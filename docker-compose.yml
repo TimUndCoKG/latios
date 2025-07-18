@@ -1,0 +1,16 @@
+services:
+  latios:
+    container_name: latios
+    image: ghcr.io/timundcokg/latios:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/latios/routes.db:/app/routes.db
+    restart: unless-stopped
+    networks:
+      - latios-network
+
+networks:
+  latios-network:
+    driver: bridge
