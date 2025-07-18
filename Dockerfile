@@ -1,24 +1,27 @@
+# Stage 1: Build
 FROM golang:1.23.2 AS builder
-
 WORKDIR /app
 
-COPY go.mod ./
-COPY go.sum ./
+# Copy and download dependencies
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . ./
+# Copy source
+COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -o latios main.go
+# Build
+RUN CGO_ENABLED=0 GOOS=linux go build -o latios main.go
 
-# ---
-
-FROM alpine:3.20.0
-
+# Stage 2: Run
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
 WORKDIR /app
-RUN apk upgrade --no-cache
+
+# Copy built binary
 COPY --from=builder /app/latios .
 
-EXPOSE 80
-EXPOSE 443
+# Expose HTTP and HTTPS ports
+EXPOSE 80 443
 
+# Run
 CMD ["./latios"]
