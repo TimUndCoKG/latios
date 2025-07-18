@@ -1,55 +1,84 @@
-// tls/tls.go
 package tls
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/timsalokat/latios_proxy/db"
-	"golang.org/x/crypto/acme/autocert"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
-func ServeWithTLS(handler http.Handler) {
-	m := &autocert.Manager{
-		Cache:      autocert.DirCache(".certs"),
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: dynamicHostPolicy,
-	}
+var certBasePath = "/etc/letsencrypt/live"
 
-	// Custom HTTP handler to skip redirect for /api/routes
-	httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/routes" {
-			handler.ServeHTTP(w, r)
-			return
+// getCertificateFunc dynamically loads a certificate for the given domain
+func getCertificateFunc() func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+	certCache := make(map[string]*tls.Certificate)
+
+	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		domain := hello.ServerName
+		if domain == "" {
+			return nil, fmt.Errorf("no SNI server name")
 		}
-		m.HTTPHandler(nil).ServeHTTP(w, r)
-	})
 
-	httpsSrv := &http.Server{
-		Addr:      ":443",
-		Handler:   handler,
-		TLSConfig: &tls.Config{GetCertificate: m.GetCertificate},
+		// Check cache first
+		if cert, ok := certCache[domain]; ok {
+			return cert, nil
+		}
+
+		certPath := filepath.Join(certBasePath, domain, "fullchain.pem")
+		keyPath := filepath.Join(certBasePath, domain, "privkey.pem")
+
+		// Verify both files exist
+		if _, err := os.Stat(certPath); os.IsNotExist(err) {
+			log.Printf("Certificate not found for domain: %s", domain)
+			return nil, err
+		}
+		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+			log.Printf("Key not found for domain: %s", domain)
+			return nil, err
+		}
+
+		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+		if err != nil {
+			log.Printf("Failed loading cert for %s: %v", domain, err)
+			return nil, err
+		}
+
+		log.Printf("Loaded cert for domain: %s", domain)
+		certCache[domain] = &cert
+		return &cert, nil
 	}
-
-	// Redirect HTTP to HTTPS, except for /api/routes
-	go func() {
-		log.Fatal(http.ListenAndServe(":80", httpHandler))
-	}()
-
-	log.Println("Listening on :443 with TLS")
-	log.Fatal(httpsSrv.ListenAndServeTLS("", ""))
 }
 
-// dynamicHostPolicy only allows domains that exist in the DB
-func dynamicHostPolicy(ctx context.Context, host string) error {
-	var route db.Route
-	result := db.DB.Where("domain = ?", host).First(&route)
-	if result.Error != nil {
-		log.Printf("ACME host validation failed for %s: %v", host, result.Error)
-		return fmt.Errorf("unauthorized domain: %s", host)
+func ServeWithTLS(handler http.Handler) {
+	server := &http.Server{
+		Addr:    ":443",
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			GetCertificate: getCertificateFunc(),
+			MinVersion:     tls.VersionTLS12,
+		},
 	}
-	return nil
+
+	// Optionally redirect HTTP to HTTPS
+	go func() {
+		log.Fatal(http.ListenAndServe(":80", http.HandlerFunc(redirectToHTTPS)))
+	}()
+
+	log.Println("Listening on :443 with manual per-domain TLS")
+	log.Fatal(server.ListenAndServeTLS("", ""))
+}
+
+func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/api/routes") {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("HTTP access allowed for /api/routes"))
+		return
+	}
+
+	host := strings.Split(r.Host, ":")[0]
+	target := "https://" + host + r.URL.RequestURI()
+	http.Redirect(w, r, target, http.StatusMovedPermanently)
 }
