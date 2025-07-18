@@ -72,9 +72,12 @@ func ServeWithTLS(handler http.Handler) {
 }
 
 func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/api/routes") {
-		host := strings.Split(r.Host, ":")[0]
-		target := "https://" + host + r.URL.RequestURI()
-		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	if r.URL.Path == "/api/routes" {
+		// Serve normally, do not redirect
+		http.DefaultServeMux.ServeHTTP(w, r)
+		return
 	}
+	host := strings.Split(r.Host, ":")[0]
+	target := "https://" + host + r.URL.RequestURI()
+	http.Redirect(w, r, target, http.StatusMovedPermanently)
 }
