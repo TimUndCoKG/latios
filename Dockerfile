@@ -17,7 +17,6 @@ FROM alpine:3.20.0
 WORKDIR /app
 RUN apk upgrade --no-cache
 COPY --from=builder /app/latios .
-COPY .certs ./.certs
 
 EXPOSE 80
 EXPOSE 443

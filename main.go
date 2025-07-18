@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/timsalokat/latios_proxy/db"
@@ -21,7 +20,7 @@ func main() {
 	// Catch-all proxy handler
 	router.HandleFunc("/", proxy.ProxyHandler)
 
-	log.Fatal(http.ListenAndServe(":80", router))
+	// log.Fatal(http.ListenAndServe(":80", router))
 
 	// TLS-enabled server with autocert
 	tls.ServeWithTLS(router)
