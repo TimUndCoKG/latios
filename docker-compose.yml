@@ -3,12 +3,32 @@ services:
     user: root
     container_name: latios
     image: ghcr.io/timundcokg/latios:latest
+    depends_on:
+      - latios-db
+    environment:
+      DB_HOST: latios-db
+      DB_USER: user
+      DB_PASSWORD: pass
+      DB_NAME: latios
+      DB_PORT: 5432
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - /opt/latios/routes.db:/routes.db
-      - /etc/letsencrypt/live:/certs:ro
+      - /etc/letsencrypt/live:/app/certs:ro
+    restart: unless-stopped
+    networks:
+      - latios-network
+
+  latios-db:
+    container_name: latios-db
+    image: postgres:16
+    environment:
+      POSTGRES_DB: latios
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - /opt/latios/data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
       - latios-network

@@ -15,6 +15,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o latios main.go
 # Stage 2: Run
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 
 # Copy built binary

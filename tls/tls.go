@@ -8,14 +8,48 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/timsalokat/latios_proxy/handlers"
 )
 
-var certBasePath = "/certs"
+var certBasePath = "/app/certs"
+
+// ListAvailableCerts returns a slice of domain names for which certificates are available
+func ListAvailableCerts() ([]string, error) {
+	entries, err := os.ReadDir(certBasePath)
+	if err != nil {
+		println(fmt.Sprintf("Error reading cert directory: %v", err))
+		return nil, err
+	}
+
+	var domains []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			certPath := filepath.Join(certBasePath, entry.Name(), "fullchain.pem")
+			keyPath := filepath.Join(certBasePath, entry.Name(), "privkey.pem")
+			if _, err1 := os.Stat(certPath); err1 == nil {
+				if _, err2 := os.Stat(keyPath); err2 == nil {
+					domains = append(domains, entry.Name())
+					println(fmt.Sprintf("Found valid cert for domain: %s", entry.Name()))
+				} else {
+					println(fmt.Sprintf("Missing key for domain: %s", entry.Name()))
+				}
+			} else {
+				println(fmt.Sprintf("Missing cert for domain: %s", entry.Name()))
+			}
+		}
+	}
+
+	println(fmt.Sprintf("Available certs: %v", domains))
+
+	return domains, nil
+}
 
 // getCertificateFunc dynamically loads a certificate for the given domain
 func getCertificateFunc() func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 	certCache := make(map[string]*tls.Certificate)
 
+	println("getting certificates")
 	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		domain := hello.ServerName
 		if domain == "" {
@@ -32,21 +66,21 @@ func getCertificateFunc() func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 
 		// Verify both files exist
 		if _, err := os.Stat(certPath); os.IsNotExist(err) {
-			log.Printf("Certificate not found for domain: %s", domain)
+			println(fmt.Sprintf("Certificate not found for domain: %s", domain))
 			return nil, err
 		}
 		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-			log.Printf("Key not found for domain: %s", domain)
+			println(fmt.Sprintf("Key not found for domain: %s", domain))
 			return nil, err
 		}
 
 		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 		if err != nil {
-			log.Printf("Failed loading cert for %s: %v", domain, err)
+			println(fmt.Sprintf("Failed loading cert for %s: %v", domain, err))
 			return nil, err
 		}
 
-		log.Printf("Loaded cert for domain: %s", domain)
+		println(fmt.Sprintf("Loaded cert for domain: %s", domain))
 		certCache[domain] = &cert
 		return &cert, nil
 	}
@@ -73,8 +107,9 @@ func ServeWithTLS(handler http.Handler) {
 
 func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/api/routes" {
-		// Serve normally, do not redirect
-		http.DefaultServeMux.ServeHTTP(w, r)
+		println("test")
+		ListAvailableCerts()
+		handlers.HandleRoutes(w, r)
 		return
 	}
 	host := strings.Split(r.Host, ":")[0]

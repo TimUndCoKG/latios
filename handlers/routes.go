@@ -8,10 +8,10 @@ import (
 )
 
 func RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/routes", handleRoutes)
+	mux.HandleFunc("/api/routes", HandleRoutes)
 }
 
-func handleRoutes(w http.ResponseWriter, r *http.Request) {
+func HandleRoutes(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		println("Received POST request")

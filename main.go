@@ -11,7 +11,7 @@ import (
 
 func main() {
 
-	db.InitDB("routes.db")
+	db.InitDB()
 
 	router := http.NewServeMux()
 
