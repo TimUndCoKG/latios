@@ -4,7 +4,7 @@ All routes are stored in a postgres database that is displayed next to it.
 
 Latios can only redirect to services that are available in the docker network "latios-network"
 
-#### Usefull comamnds
+#### Useful comamnds
 1. docker pull ghcr.io/timundcokg/latios
 2. docker compoes up -d --force-recreate
 3. docker exec -it latios /bin/sh
