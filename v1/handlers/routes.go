@@ -3,8 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/timsalokat/latios_proxy/db"
 )
 
 func RegisterRoutes(mux *http.ServeMux) {
