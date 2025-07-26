@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/timsalokat/latios_proxy/certs"
 	"github.com/timsalokat/latios_proxy/db"
 	"github.com/timsalokat/latios_proxy/handler"
 )
@@ -16,7 +17,9 @@ var RedirectIgnores = map[string]func(http.ResponseWriter, *http.Request){
 
 func main() {
 	db.InitDB()
-	certs.InitRenewal()
+	certs.RenewCerts()
+	certs.CreateCertificates()
+
 	router := http.NewServeMux()
 	for key, value := range RedirectIgnores {
 		router.HandleFunc(key, value)
@@ -29,14 +32,14 @@ func main() {
 func serve(router http.Handler) {
 	httpServer := &http.Server{
 		Addr:    ":80",
-		Handler: httpHandler(router),
+		Handler: httpHandler(),
 	}
 
 	httpsServer := &http.Server{
-		Addr:      ":443",
-		Handler:   router,
+		Addr:    ":443",
+		Handler: router,
 		TLSConfig: &tls.Config{
-			//TODO TBD
+			Certificates: certs.GetCertificates(),
 		},
 	}
 
@@ -44,7 +47,7 @@ func serve(router http.Handler) {
 	log.Fatal(httpsServer.ListenAndServeTLS("", ""))
 }
 
-func httpHandler(baseRouter http.Handler) http.Handler {
+func httpHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Dont redirect api routes
