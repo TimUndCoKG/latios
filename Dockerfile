@@ -18,6 +18,11 @@ RUN apk --no-cache add ca-certificates
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 
+# Install certbot and dependencies
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache certbot tzdata curl bash && \
+    mkdir -p /var/www/html
+
 # Copy built binary
 COPY --from=builder /app/latios .
 

@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"encoding/json"
@@ -7,11 +7,7 @@ import (
 	"github.com/timsalokat/latios_proxy/db"
 )
 
-func RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/routes", HandleRoutes)
-}
-
-func HandleRoutes(w http.ResponseWriter, r *http.Request) {
+func ApiHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		println("Received POST request")
@@ -22,7 +18,7 @@ func HandleRoutes(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		println("Decoded route:", route.Domain)
-		result := db.DB.Create(&route)
+		result := db.Client.Create(&route)
 		if result.Error != nil {
 			println("Error creating route in DB:", result.Error.Error())
 			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
@@ -33,7 +29,7 @@ func HandleRoutes(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		println("Received GET request")
 		var routes []db.Route
-		result := db.DB.Find(&routes)
+		result := db.Client.Find(&routes)
 		if result.Error != nil {
 			println("Error fetching routes from DB:", result.Error.Error())
 			http.Error(w, result.Error.Error(), http.StatusInternalServerError)

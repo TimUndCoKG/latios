@@ -1,4 +1,4 @@
-package proxy
+package handler
 
 import (
 	"log"
@@ -12,7 +12,7 @@ import (
 func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
 	var route db.Route
-	result := db.DB.Where("domain = ?", host).First(&route)
+	result := db.Client.Where("domain = ?", host).First(&route)
 	if result.Error != nil {
 		http.Error(w, "route not found", http.StatusNotFound)
 		return
@@ -32,7 +32,7 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.FlushInterval = -1 // for streaming support
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		resp.Header.Set("X-Proxied-By", "GoProxy")
+		resp.Header.Set("X-Proxied-By", "Latios")
 		return nil
 	}
 
@@ -41,6 +41,5 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "proxy error", http.StatusBadGateway)
 	}
 
-	// Support WebSocket by hijacking the connection (automatically handled by ReverseProxy)
 	proxy.ServeHTTP(w, r)
 }

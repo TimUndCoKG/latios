@@ -15,7 +15,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /etc/letsencrypt/archive:/app/certs:ro
+      # - /etc/letsencrypt/archive:/app/certs:ro
+      - /etc/letsencrypt:/etc/letsencrypt
     restart: unless-stopped
     networks:
       - latios-network
