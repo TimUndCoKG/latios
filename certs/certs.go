@@ -11,6 +11,7 @@ import (
 
 var certCache = make(map[string]*tls.Certificate)
 var domain = "timsalokat.dev"
+var wildCardDomain = "*." + domain
 var certBasePath = "/etc/letsencrypt"
 
 func RenewCerts() {
@@ -37,9 +38,9 @@ func CreateCertificates() error {
 		}
 	}
 
-	_, err = getCertificate("*" + domain)
+	_, err = getCertificate(wildCardDomain)
 	if err != nil {
-		err = createCertificate("*" + domain)
+		err = createCertificate(wildCardDomain)
 	}
 	return err
 }
@@ -51,10 +52,10 @@ func GetCertificates() []tls.Certificate {
 		log.Panic("Couldnt get or obtain cert for base domain")
 	}
 
-	subCertificate, err := getCertificate("*" + domain)
+	subCertificate, err := getCertificate(wildCardDomain)
 	if err != nil {
-		log.Printf("Error obtaining certificate for base domain: %v", err)
-		log.Panic("Couldnt get or obtain cert for sub domain")
+		log.Printf("Error obtaining certificate for wildcard domain: %v", err)
+		log.Panic("Couldnt get or obtain cert for wildcard domain")
 	}
 	return []tls.Certificate{*baseCertificate, *subCertificate}
 }
