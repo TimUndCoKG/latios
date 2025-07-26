@@ -10,7 +10,7 @@ import (
 )
 
 var Client *gorm.DB
-var MemoryRoutes map[string]Route
+var MemoryRoutes = make(map[string]Route)
 
 func InitDB() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
