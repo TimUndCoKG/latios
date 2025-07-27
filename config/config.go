@@ -8,7 +8,7 @@ import (
 var DOMAIN string
 
 func LoadConfig() {
-	DOMAIN := os.Getenv("DOMAIN")
+	DOMAIN = os.Getenv("DOMAIN")
 	if DOMAIN == "" {
 		log.Fatal("DOMAIN not set")
 		os.Exit(1)
