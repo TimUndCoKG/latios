@@ -7,52 +7,63 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/timsalokat/latios_proxy/config"
 )
 
 var certCache = make(map[string]*tls.Certificate)
-var domain = "timsalokat.dev"
-var wildCardDomain = "*." + domain
-var certBasePath = "/etc/letsencrypt"
+var certBasePath = "/etc/letsencrypt/live"
 
 func RenewCerts() {
 	go func() {
 		for {
 			log.Println("Starting cert renewal...")
 
-			cmd := exec.Command("certbot", "renew", "--standalone")
+			credFile, err := createCredentialFile()
+			if err != nil {
+				log.Fatal("Couldnt get cloudflare credential")
+			}
+
+			cmd := exec.Command("certbot", "renew",
+				"--dns-cloudflare",
+				"--dns-cloudflare-credentials", credFile.Name(),
+				"--quiet")
+
+			credFile.Close()
+			os.Remove(credFile.Name())
+
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				log.Printf("Renewal error: %v\n%s", err, string(out))
+			} else {
+				log.Printf("Renewal output: %s", string(out))
 			}
+
 			time.Sleep(12 * time.Hour)
 		}
 	}()
 }
 
 func CreateCertificates() error {
-	_, err := getCertificate(domain)
-	if err != nil {
-		err = createCertificate(domain)
+	_, err := getCertificate(config.GetDomain())
+	_, err2 := getCertificate(config.GetWildcardDomain())
+	if err != nil || err2 != nil {
+		err = createCertificate(config.GetDomain())
 		if err != nil {
 			return err
 		}
 	}
-
-	_, err = getCertificate(wildCardDomain)
-	if err != nil {
-		err = createCertificate(wildCardDomain)
-	}
-	return err
+	return nil
 }
 
 func GetCertificates() []tls.Certificate {
-	baseCertificate, err := getCertificate(domain)
+	baseCertificate, err := getCertificate(config.GetDomain())
 	if err != nil {
 		log.Printf("Error obtaining certificate for base domain: %v", err)
 		log.Panic("Couldnt get or obtain cert for base domain")
 	}
 
-	subCertificate, err := getCertificate(wildCardDomain)
+	subCertificate, err := getCertificate(config.GetWildcardDomain())
 	if err != nil {
 		log.Printf("Error obtaining certificate for wildcard domain: %v", err)
 		log.Panic("Couldnt get or obtain cert for wildcard domain")
@@ -88,12 +99,20 @@ func getCertificate(domain string) (*tls.Certificate, error) {
 }
 
 func createCertificate(domain string) error {
+	credFile, err := createCredentialFile()
+	if err != nil {
+		log.Fatal("Couldnt get cloudflare credential")
+	}
+	defer credFile.Close()
+	defer os.Remove(credFile.Name())
 
 	cmd := exec.Command(
 		"certbot",
 		"certonly",
-		"--standalone",
+		"--dns-cloudflare",
+		"--dns-cloudflare-credentials", credFile.Name(),
 		"-d", domain,
+		"-d", config.GetWildcardDomain(),
 		"--agree-tos",
 		"--no-eff-email",
 		"-m", "admin@"+domain,
@@ -108,4 +127,23 @@ func createCertificate(domain string) error {
 
 	log.Printf("Certbot succeeded for %s:\n%s", domain, string(out))
 	return nil
+}
+
+func createCredentialFile() (*os.File, error) {
+	token := os.Getenv("CF_API_TOKEN")
+	if token == "" {
+		log.Fatal("CF_API_TOKEN not set")
+	}
+
+	credFile, err := os.CreateTemp("", "cloudflare.ini")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = credFile.WriteString("dns_cloudflare_api_token = " + token + "/n")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return credFile, nil
 }

@@ -18,9 +18,10 @@ RUN apk --no-cache add ca-certificates
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 
-# Install certbot and dependencies
+# Install certbot with Cloudflare DNS plugin
 RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache certbot tzdata curl bash && \
+    apk add --no-cache certbot tzdata curl bash py3-pip && \
+    pip install --no-cache-dir certbot-dns-cloudflare && \
     mkdir -p /var/www/html
 
 # Copy built binary

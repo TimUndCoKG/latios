@@ -11,6 +11,8 @@ services:
       DB_PASSWORD: pass
       DB_NAME: latios
       DB_PORT: 5432
+      CF_API_TOKEN: test_string
+      DOMAIN: timsalokat.dev
     ports:
       - "80:80"
       - "443:443"

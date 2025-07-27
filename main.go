@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/timsalokat/latios_proxy/certs"
+	"github.com/timsalokat/latios_proxy/config"
 	"github.com/timsalokat/latios_proxy/db"
 	"github.com/timsalokat/latios_proxy/handler"
 )
@@ -16,6 +17,7 @@ var RedirectIgnores = map[string]func(http.ResponseWriter, *http.Request){
 }
 
 func main() {
+	config.LoadConfig()
 	db.InitDB()
 	certs.RenewCerts()
 	certs.CreateCertificates()
