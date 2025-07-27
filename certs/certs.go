@@ -99,6 +99,9 @@ func getCertificate(domain string) (*tls.Certificate, error) {
 }
 
 func createCertificate(domain string) error {
+	// clear any stale lock
+	_ = os.Remove("/var/lib/letsencrypt/.certbot.lock")
+
 	credFile, err := createCredentialFile()
 	if err != nil {
 		log.Fatal("Couldnt get cloudflare credential")
