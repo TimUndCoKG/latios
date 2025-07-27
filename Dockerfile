@@ -14,20 +14,32 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o latios main.go
 
 # Stage 2: Run
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-RUN apk add --no-cache gcc musl-dev
+
+RUN apk add --no-cache \
+    ca-certificates \
+    gcc \
+    musl-dev \
+    python3 \
+    py3-pip \
+    libffi-dev \
+    openssl-dev \
+    bash \
+    curl \
+    tzdata
+
+# Create and activate virtual environment, then install certbot inside it
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install certbot certbot-dns-cloudflare \
+    && mkdir -p /var/www/html
+
+ENV PATH="/opt/venv/bin:$PATH"
+
 WORKDIR /app
 
-# Install certbot + cloudflare plugin + dependencies
-RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache certbot certbot-dns-cloudflare tzdata curl bash && \
-    mkdir -p /var/www/html
-
-# Copy built binary
+# Copy your Go binary
 COPY --from=builder /app/latios .
 
-# Expose HTTP and HTTPS ports
 EXPOSE 80 443
 
-# Run
 CMD ["./latios"]
