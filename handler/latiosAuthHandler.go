@@ -102,6 +102,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.Form.Get("password")
 		redirect := r.Form.Get("redirect")
 
+		isSecure := r.TLS != nil
+
 		if validateCredentials(username, password) {
 			// Set cookie
 			http.SetCookie(w, &http.Cookie{
@@ -109,7 +111,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 				Value:    os.Getenv("LATIOS_AUTH_COOKIE"),
 				Path:     "/",
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   isSecure,
 				Expires:  time.Now().Add(4 * time.Hour),
 			})
 
