@@ -13,7 +13,8 @@ import (
 )
 
 var RedirectIgnores = map[string]func(http.ResponseWriter, *http.Request){
-	"/api/routes": handler.ApiHandler,
+	"/latios/routes": handler.RoutesApiHandler,
+	"/login":         handler.LoginHandler,
 }
 
 func main() {
@@ -41,9 +42,10 @@ func main() {
 
 	log.Println("[MIDDLEWARE] Adding request logging middleware...")
 	loggedRouter := loggingMiddleware(router)
+	secureRouer := handler.AuthMiddleware(loggedRouter)
 
 	log.Println("[SERVE] Starting HTTP and HTTPS servers...")
-	serve(loggedRouter)
+	serve(secureRouer)
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {

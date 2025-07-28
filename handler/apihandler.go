@@ -7,7 +7,7 @@ import (
 	"github.com/timsalokat/latios_proxy/db"
 )
 
-func ApiHandler(w http.ResponseWriter, r *http.Request) {
+func RoutesApiHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		println("Received GET request")

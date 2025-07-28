@@ -8,4 +8,5 @@ type Route struct {
 	Static          bool
 	StaticPath      string
 	AllowWebsockets bool
+	LatiosCheckAuth bool
 }
