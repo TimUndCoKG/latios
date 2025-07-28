@@ -60,13 +60,13 @@ func GetCertificates() []tls.Certificate {
 	baseCertificate, err := getCertificate(config.GetDomain())
 	if err != nil {
 		log.Printf("Error obtaining certificate for base domain: %v", err)
-		log.Panic("Couldnt get or obtain cert for base domain")
+		os.Exit(1)
 	}
 
 	subCertificate, err := getCertificate(config.GetWildcardDomain())
 	if err != nil {
 		log.Printf("Error obtaining certificate for wildcard domain: %v", err)
-		log.Panic("Couldnt get or obtain cert for wildcard domain")
+		os.Exit(1)
 	}
 	return []tls.Certificate{*baseCertificate, *subCertificate}
 }
@@ -109,6 +109,15 @@ func createCertificate(domain string) error {
 	defer credFile.Close()
 	defer os.Remove(credFile.Name())
 
+	// log.Println(credFile.Name())
+
+	// data, err := os.ReadFile(credFile.Name())
+	// if err != nil {
+	// 	log.Fatalf("Failed to read file")
+	// }
+
+	// log.Printf(string(data))
+
 	cmd := exec.Command(
 		"certbot",
 		"certonly",
@@ -143,7 +152,7 @@ func createCredentialFile() (*os.File, error) {
 		log.Fatal(err)
 	}
 
-	_, err = credFile.WriteString("dns_cloudflare_api_token = " + token + "/n")
+	_, err = credFile.WriteString("dns_cloudflare_api_token = " + token)
 	if err != nil {
 		log.Fatal(err)
 	}
