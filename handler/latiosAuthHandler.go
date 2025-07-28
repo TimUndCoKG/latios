@@ -40,37 +40,26 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// Check if user is authenticated via cookie
+		log.Printf("[AUTH] Checking authentication via cookie")
 
-		switch r.Method {
-		case http.MethodGet:
-			// Check if user is authenticated via cookie
-			log.Printf("[AUTH] Checking authentication via cookie")
-			expectedToken := os.Getenv("LATIOS_AUTH_COOKIE")
+		cookie, err := r.Cookie(authCookieName)
+		if err != nil || cookie.Value != os.Getenv("LATIOS_AUTH_COOKIE") {
 
-			cookie, err := r.Cookie(authCookieName)
-			if err != nil || cookie.Value != expectedToken {
-				log.Printf("[AUTH] Not authenticated, redirecting to login")
-
-				// Redirect to login page with redirect param
-				loginURL := fmt.Sprintf("/latios/login?redirect=%s", url.QueryEscape(r.URL.String()))
-				http.Redirect(w, r, loginURL, http.StatusFound)
-				return
-			}
-
-			// Authenticated, proceed
-			log.Printf("[AUTH] Authenticated user, proceeding")
-			next.ServeHTTP(w, r)
-
-		default:
-			// Check if user is authenticated via header
-			log.Printf("[AUTH] Checking authentication via cookie")
-			expectedToken := os.Getenv("LATIOS_AUTH_TOKEN")
-
+			log.Printf("[AUTH] Checking authentication via header")
 			header := r.Header.Get(authHeaderName)
+
 			if header == "" {
-				log.Printf("[AUTH] Missing Authorization header")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
+				if r.Method == http.MethodGet {
+					log.Printf("[AUTH] Not authenticated, redirecting to login")
+					loginURL := fmt.Sprintf("/latios/login?redirect=%s", url.QueryEscape(r.URL.String()))
+					http.Redirect(w, r, loginURL, http.StatusFound)
+					return
+				} else {
+					log.Println("[AUTH] Invalid Authorization header")
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
 			}
 
 			if !strings.HasPrefix(header, "Bearer ") {
@@ -80,17 +69,16 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			}
 
 			token := strings.TrimPrefix(header, "Bearer ")
-			if token != expectedToken {
-				log.Println("[AUTH] Invalid Authorization token")
+			if token != os.Getenv("LATIOS_AUTH_TOKEN") {
+				log.Println("[AUTH] Invalid Authorization header")
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-
-			// Authenticated, proceed
-			log.Printf("[AUTH] Authenticated request, proceding")
-			next.ServeHTTP(w, r)
-
 		}
+
+		// Authenticated, proceed
+		log.Printf("[AUTH] Authenticated user, proceeding")
+		next.ServeHTTP(w, r)
 
 	})
 }
