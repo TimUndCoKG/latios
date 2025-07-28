@@ -7,6 +7,10 @@ import (
 	"github.com/timsalokat/latios_proxy/db"
 )
 
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
 func RoutesApiHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:

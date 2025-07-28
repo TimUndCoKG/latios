@@ -15,6 +15,7 @@ import (
 var RedirectIgnores = map[string]func(http.ResponseWriter, *http.Request){
 	"/latios/routes": handler.RoutesApiHandler,
 	"/latios/login":  handler.LoginHandler,
+	"/latios/health": handler.HealthCheckHandler,
 }
 
 func main() {
