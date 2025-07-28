@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"bytes"
-	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -47,19 +45,6 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%sProxied response: %d %s", prefix, resp.StatusCode, resp.Status)
 		for k, v := range resp.Header {
 			log.Printf("%sHeader: %s=%v", prefix, k, v)
-		}
-
-		// Optionally log body (only for small responses)
-		if resp.Body != nil {
-			bodyBytes, err := io.ReadAll(resp.Body)
-			if err != nil {
-				log.Printf("%sError reading response body: %v", prefix, err)
-				return nil
-			}
-			log.Printf("%sBody: %s", prefix, string(bodyBytes))
-
-			// Replace body since it's been read
-			resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 
 		return nil
