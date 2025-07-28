@@ -6,6 +6,6 @@ Latios can only redirect to services that are available in the docker network "l
 
 #### Useful comamnds
 1. docker pull ghcr.io/timundcokg/latios
-2. docker composa up -d --force-recreate
+2. docker compose up -d --force-recreate
 3. docker exec -it latios /bin/sh
 4. curl -o compose.yml https://raw.githubusercontent.com/TimUndCoKG/latios/refs/heads/main/docker-compose.yml

@@ -46,8 +46,7 @@ func RenewCerts() {
 
 func CreateCertificates() error {
 	_, err := getCertificate(config.GetDomain())
-	_, err2 := getCertificate(config.GetWildcardDomain())
-	if err != nil || err2 != nil {
+	if err != nil {
 		err = createCertificate(config.GetDomain())
 		if err != nil {
 			return err
@@ -63,12 +62,13 @@ func GetCertificates() []tls.Certificate {
 		os.Exit(1)
 	}
 
-	subCertificate, err := getCertificate(config.GetWildcardDomain())
-	if err != nil {
-		log.Printf("Error obtaining certificate for wildcard domain: %v", err)
-		os.Exit(1)
-	}
-	return []tls.Certificate{*baseCertificate, *subCertificate}
+	// subCertificate, err := getCertificate(config.GetWildcardDomain())
+	// if err != nil {
+	// 	log.Printf("Error obtaining certificate for wildcard domain: %v", err)
+	// 	os.Exit(1)
+	// }
+	// return []tls.Certificate{*baseCertificate, *subCertificate}
+	return []tls.Certificate{*baseCertificate}
 }
 
 func getCertificate(domain string) (*tls.Certificate, error) {
@@ -109,22 +109,13 @@ func createCertificate(domain string) error {
 	defer credFile.Close()
 	defer os.Remove(credFile.Name())
 
-	// log.Println(credFile.Name())
-
-	// data, err := os.ReadFile(credFile.Name())
-	// if err != nil {
-	// 	log.Fatalf("Failed to read file")
-	// }
-
-	// log.Printf(string(data))
-
 	cmd := exec.Command(
 		"certbot",
 		"certonly",
 		"--dns-cloudflare",
 		"--dns-cloudflare-credentials", credFile.Name(),
 		"-d", domain,
-		"-d", config.GetWildcardDomain(),
+		"-d", "*."+domain,
 		"--agree-tos",
 		"--no-eff-email",
 		"-m", "admin@"+domain,

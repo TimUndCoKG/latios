@@ -18,7 +18,3 @@ func LoadConfig() {
 func GetDomain() string {
 	return DOMAIN
 }
-
-func GetWildcardDomain() string {
-	return "*." + DOMAIN
-}
