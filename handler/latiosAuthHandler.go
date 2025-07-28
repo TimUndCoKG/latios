@@ -13,12 +13,13 @@ import (
 )
 
 var authCookieName = "latios_auth"
+var authHeaderName = "latios_auth"
 
-// Simple check if route requires security (replace with your logic)
+// Simple check if route requires security
 func routeRequiresAuth(host string) bool {
 	route, err := db.GetRoute(host)
 	if err != nil {
-		return false
+		return true
 	}
 	return route.LatiosCheckAuth // you should add this field to your Route struct
 }
@@ -28,8 +29,8 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
-		// If the path is the login page or static assets, skip auth
-		if r.URL.Path == "/login" || strings.HasPrefix(r.URL.Path, "/static/") {
+		// If the path is the login page, skip auth
+		if r.URL.Path == "/latios/login" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -40,20 +41,57 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Check if user is authenticated via cookie
-		cookie, err := r.Cookie(authCookieName)
-		if err != nil || cookie.Value != "authenticated" {
-			log.Printf("[AUTH] Not authenticated, redirecting to login")
+		switch r.Method {
+		case http.MethodGet:
+			// Check if user is authenticated via cookie
+			log.Printf("[AUTH] Checking authentication via cookie")
+			expectedToken := os.Getenv("LATIOS_AUTH_COOKIE")
 
-			// Redirect to login page with redirect param
-			loginURL := fmt.Sprintf("/login?redirect=%s", url.QueryEscape(r.URL.String()))
-			http.Redirect(w, r, loginURL, http.StatusFound)
-			return
+			cookie, err := r.Cookie(authCookieName)
+			if err != nil || cookie.Value != expectedToken {
+				log.Printf("[AUTH] Not authenticated, redirecting to login")
+
+				// Redirect to login page with redirect param
+				loginURL := fmt.Sprintf("/latios/login?redirect=%s", url.QueryEscape(r.URL.String()))
+				http.Redirect(w, r, loginURL, http.StatusFound)
+				return
+			}
+
+			// Authenticated, proceed
+			log.Printf("[AUTH] Authenticated user, proceeding")
+			next.ServeHTTP(w, r)
+
+		default:
+			// Check if user is authenticated via header
+			log.Printf("[AUTH] Checking authentication via cookie")
+			expectedToken := os.Getenv("LATIOS_AUTH_TOKEN")
+
+			header := r.Header.Get(authHeaderName)
+			if header == "" {
+				log.Printf("[AUTH] Missing Authorization header")
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			if !strings.HasPrefix(header, "Bearer ") {
+				log.Printf("[AUTH] Invalid Authorization format")
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			token := strings.TrimPrefix(header, "Bearer ")
+			if token != expectedToken {
+				log.Println("[AUTH] Invalid Authorization token")
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			// Authenticated, proceed
+			log.Printf("[AUTH] Authenticated request, proceding")
+			next.ServeHTTP(w, r)
+
 		}
 
-		// Authenticated, proceed
-		log.Printf("[AUTH] Authenticated user, proceeding")
-		next.ServeHTTP(w, r)
 	})
 }
 
@@ -80,7 +118,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			// Set cookie
 			http.SetCookie(w, &http.Cookie{
 				Name:     authCookieName,
-				Value:    "authenticated",
+				Value:    os.Getenv("LATIOS_AUTH_COOKIE"),
 				Path:     "/",
 				HttpOnly: true,
 				Secure:   true,
@@ -112,7 +150,7 @@ func loginFormHTML(redirect, errorMsg string) string {
 	return fmt.Sprintf(`
 	<html><body>
 	<h2>Login</h2>
-	<form method="POST" action="/login">
+	<form method="POST" action="/latios/login">
 		<input type="hidden" name="redirect" value="%s" />
 		<label>Username: <input name="username" type="text" /></label><br/>
 		<label>Password: <input name="password" type="password" /></label><br/>

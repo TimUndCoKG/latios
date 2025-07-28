@@ -12,7 +12,11 @@ services:
       DB_NAME: latios
       DB_PORT: 5432
       CF_API_TOKEN: test_string
-      DOMAIN: timsalokat.dev
+      LATIOS_AUTH_COOKIE: test_cookie_value
+      LATIOS_AUTH_TOKEN: test_token_value
+      DOMAIN: timsalokat.local
+      FALLBACK_USER: testuser
+      FALLBACK_PASSWORD: testpass
     ports:
       - "80:80"
       - "443:443"
