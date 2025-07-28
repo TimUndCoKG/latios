@@ -28,7 +28,16 @@ func main() {
 	}
 	router.HandleFunc("/", handler.ProxyHandler)
 
-	serve(router)
+	loggedRouter := loggingMiddleware(router)
+
+	serve(loggedRouter)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Incoming request: %s %s from %s, to %s", r.Method, r.URL.Path, r.RemoteAddr, r.Host)
+		next.ServeHTTP(w, r)
+	})
 }
 
 func serve(router http.Handler) {
