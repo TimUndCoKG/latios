@@ -122,7 +122,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 				Path:     "/",
 				HttpOnly: true,
 				Secure:   true,
-				Expires:  time.Now().Add(1 * time.Hour),
+				Expires:  time.Now().Add(4 * time.Hour),
 			})
 
 			log.Printf("[AUTH] User %s logged in successfully, redirecting to %s", username, redirect)
