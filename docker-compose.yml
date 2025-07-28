@@ -17,6 +17,7 @@ services:
       DOMAIN: timsalokat.local
       FALLBACK_USER: testuser
       FALLBACK_PASSWORD: testpass
+      ENVIRONMENT: dev
     ports:
       - "80:80"
       - "443:443"

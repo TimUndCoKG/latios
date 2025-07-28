@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/timsalokat/latios_proxy/certs"
@@ -27,11 +28,13 @@ func main() {
 	log.Println("[DB] Initializing database...")
 	db.InitDB()
 
-	log.Println("[CERTS] Renewing existing certificates...")
-	certs.RenewCerts()
+	if os.Getenv("ENVIRONMENT") == "live" {
+		log.Println("[CERTS] Renewing existing certificates...")
+		certs.RenewCerts()
 
-	log.Println("[CERTS] Creating new certificates (if needed)...")
-	certs.CreateCertificates()
+		log.Println("[CERTS] Creating new certificates (if needed)...")
+		certs.CreateCertificates()
+	}
 
 	router := http.NewServeMux()
 	log.Println("[MIDDLEWARE] Adding request logging middleware...")
@@ -58,34 +61,37 @@ func loggingMiddleware(next http.Handler) http.Handler {
 }
 
 func serve(router http.Handler) {
+	if os.Getenv("ENVIRONMENT") == "live" {
+		log.Println("[HTTPS] Preparing HTTPS server on :443")
+		httpsServer := &http.Server{
+			Addr:    ":443",
+			Handler: router,
+			TLSConfig: &tls.Config{
+				Certificates: certs.GetCertificates(),
+			},
+		}
+
+		go func() {
+			// Start HTTPS server
+			log.Println("[HTTPS] Starting HTTPS server on :443")
+			if err := httpsServer.ListenAndServeTLS("", ""); err != nil {
+				log.Printf("[HTTPS] ERROR: %v\n", err)
+			}
+		}()
+	}
+
 	log.Println("[HTTP] Preparing HTTP server on :80")
 	httpServer := &http.Server{
 		Addr:    ":80",
 		Handler: httpHandler(router),
 	}
 
-	log.Println("[HTTPS] Preparing HTTPS server on :443")
-	httpsServer := &http.Server{
-		Addr:    ":443",
-		Handler: router,
-		TLSConfig: &tls.Config{
-			Certificates: certs.GetCertificates(),
-		},
-	}
-
 	// Start HTTP redirect server
-	go func() {
-		log.Println("[HTTP] Starting HTTP server on :80 (redirect handler enabled)")
-		if err := httpServer.ListenAndServe(); err != nil {
-			log.Printf("[HTTP] ERROR: %v\n", err)
-		}
-	}()
-
-	// Start HTTPS server
-	log.Println("[HTTPS] Starting HTTPS server on :443")
-	if err := httpsServer.ListenAndServeTLS("", ""); err != nil {
-		log.Printf("[HTTPS] ERROR: %v\n", err)
+	log.Println("[HTTP] Starting HTTP server on :80 (redirect handler enabled)")
+	if err := httpServer.ListenAndServe(); err != nil {
+		log.Printf("[HTTP] ERROR: %v\n", err)
 	}
+
 }
 
 func httpHandler(router http.Handler) http.Handler {

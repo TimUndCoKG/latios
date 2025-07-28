@@ -33,6 +33,8 @@ RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install certbot certbot-dns-cloudflare \
     && mkdir -p /var/www/html
 
+HEALTHCHECK --interval=15s --timeout=5s --retries=5 --start-period=5s CMD curl -f http://localhost:80/health || exit 1
+
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
