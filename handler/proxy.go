@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -9,9 +11,14 @@ import (
 	"github.com/timsalokat/latios_proxy/db"
 )
 
+var prefix = "proxy-logger - "
+
 func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
 	var route db.Route
+
+	log.Println(prefix + "ProxyHandler called for " + r.Host)
+
 	result := db.Client.Where("domain = ?", host).First(&route)
 	if result.Error != nil {
 		http.Error(w, "route not found", http.StatusNotFound)
@@ -31,15 +38,38 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.FlushInterval = -1 // for streaming support
+
 	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Add a header
 		resp.Header.Set("X-Proxied-By", "Latios")
+
+		// Log status code and headers
+		log.Printf("%sProxied response: %d %s", prefix, resp.StatusCode, resp.Status)
+		for k, v := range resp.Header {
+			log.Printf("%sHeader: %s=%v", prefix, k, v)
+		}
+
+		// Optionally log body (only for small responses)
+		if resp.Body != nil {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("%sError reading response body: %v", prefix, err)
+				return nil
+			}
+			log.Printf("%sBody: %s", prefix, string(bodyBytes))
+
+			// Replace body since it's been read
+			resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
+
 		return nil
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, e error) {
-		log.Printf("proxy error: %v", e)
+		log.Printf("%sproxy error: %v", prefix, e)
 		http.Error(w, "proxy error", http.StatusBadGateway)
 	}
 
+	log.Println(prefix + "Request proxied")
 	proxy.ServeHTTP(w, r)
 }
