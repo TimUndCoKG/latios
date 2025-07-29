@@ -23,12 +23,12 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if route.Static {
-		http.StripPrefix("/", http.FileServer(http.Dir(route.StaticPath))).ServeHTTP(w, r)
+	if route.IsStatic {
+		http.StripPrefix("/", http.FileServer(http.Dir(route.TargetPath))).ServeHTTP(w, r)
 		return
 	}
 
-	target, err := url.Parse(route.Target)
+	target, err := url.Parse(route.TargetPath)
 	if err != nil {
 		http.Error(w, "bad target", http.StatusInternalServerError)
 		return

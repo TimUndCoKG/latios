@@ -23,7 +23,7 @@ func routeRequiresAuth(host string) bool {
 	if err != nil {
 		return true
 	}
-	return route.LatiosCheckAuth // you should add this field to your Route struct
+	return route.EnforceAuth // you should add this field to your Route struct
 }
 
 // Middleware to check authentication and redirect to login if needed
