@@ -1,7 +1,9 @@
 package handler
 
 import (
+	_ "embed"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"net/url"
@@ -89,8 +91,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		// Show simple login form
 		redirect := r.URL.Query().Get("redirect")
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, loginFormHTML(redirect, ""))
+		loginPage(w,r,redirect, "")
 	case http.MethodPost:
 		err := r.ParseForm()
 		if err != nil {
@@ -122,8 +123,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, redirect, http.StatusFound)
 		} else {
 			log.Printf("[AUTH] Invalid credentials for user %s", username)
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, loginFormHTML(redirect, "Invalid username or password"))
+			loginPage(w,r,redirect, "Invalid username or password")
 		}
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -136,16 +136,22 @@ func validateCredentials(username, password string) bool {
 	return username == expectedUser && password == expectedPass
 }
 
-func loginFormHTML(redirect, errorMsg string) string {
-	return fmt.Sprintf(`
-	<html><body>
-	<h2>Login</h2>
-	<form method="POST" action="/latios/login">
-		<input type="hidden" name="redirect" value="%s" />
-		<label>Username: <input name="username" type="text" /></label><br/>
-		<label>Password: <input name="password" type="password" /></label><br/>
-		<input type="submit" value="Login" />
-	</form>
-	<p style="color:red;">%s</p>
-	</body></html>`, redirect, errorMsg)
+//go:embed templates/login.html
+var loginHTML string
+
+var login_template = template.Must(template.New("login.html").Parse(loginHTML))
+type LoginData struct {
+	Redirect string
+	ErrorMsg string
+}
+
+func loginPage(w http.ResponseWriter, r *http.Request, redirect string, err string) {
+	data := LoginData{
+		Redirect: redirect,
+		ErrorMsg: err,
+	}
+
+	if err := login_template.Execute(w, data); err != nil {
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+	}
 }

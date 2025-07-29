@@ -1,0 +1,114 @@
+<html>
+	<head>
+		<style>
+			body {
+				margin: 0;
+				height: 100vh;
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+				background: #e0e0e0;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+			}
+
+			.card {
+				background: lightgrey;
+				border: 2px solid #323232;
+				border-radius: 6px;
+				box-shadow: 4px 4px #323232;
+				padding: 20px 30px;
+				width: 300px;
+				display: flex;
+				gap: 15px;
+				flex-direction: column;
+				align-items: center;
+			}
+
+			.card h2 {
+				margin-bottom: 20px;
+				font-size: 24px;
+				font-weight: 700;
+				color: #323232;
+			}
+
+			.form {
+				width: 100%;
+				display: flex;
+				flex-direction: column;
+				gap: 15px;
+			}
+
+			.input {
+				padding: 10px;
+				border: 2px solid #323232;
+				border-radius: 5px;
+				box-shadow: 2px 2px #323232;
+				font-size: 15px;
+				outline: none;
+			}
+
+			.input:focus {
+				border-color: #2d8cf0;
+			}
+
+			.button {
+				margin-top: 10px;
+				padding: 10px;
+				background: #fff;
+				border: 2px solid #323232;
+				border-radius: 5px;
+				box-shadow: 2px 2px #323232;
+				font-size: 16px;
+				font-weight: 600;
+				cursor: pointer;
+			}
+
+			.button:active {
+				box-shadow: none;
+				transform: translate(2px, 2px);
+			}
+
+			.error {
+				color: #e74c3c;
+				font-size: 0.9rem;
+				margin-top: 10px;
+				text-align: center;
+			}
+
+			.service {
+				font-weight: 300;
+				color: #666;
+				margin-bottom: 10px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="service">Latios</div>
+		<div class="card">
+			<h2>Login</h2>
+			<form class="form" method="POST" action="/latios/login">
+				<input type="hidden" name="redirect" value="{{.Redirect}}" />
+				<input
+					class="input"
+					name="username"
+					placeholder="Username"
+					type="text"
+					autocomplete="username"
+				/>
+				<input
+					class="input"
+					name="password"
+					placeholder="Password"
+					type="password"
+					autocomplete="current-password"
+				/>
+				<button class="button">Submit</button>
+			</form>
+			{{if .ErrorMsg}}
+			<p class="error">{{.ErrorMsg}}</p>
+			{{end}}
+		</div>
+	</body>
+</html>
