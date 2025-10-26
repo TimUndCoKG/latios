@@ -62,6 +62,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 func serve(router http.Handler) {
 	if os.Getenv("ENVIRONMENT") == "live" {
+
 		log.Println("[HTTPS] Preparing HTTPS server on :443")
 		httpsServer := &http.Server{
 			Addr:    ":443",

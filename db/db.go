@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 var Client *gorm.DB
@@ -22,7 +23,15 @@ func InitDB() {
 	)
 
 	var err error
-	Client, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	gormConfig := &gorm.Config{
+		Logger: gormLogger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			gormLogger.Config{
+				LogLevel: gormLogger.Silent,
+			},
+		),
+	}
+	Client, err = gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}

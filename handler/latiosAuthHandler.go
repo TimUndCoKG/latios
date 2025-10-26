@@ -23,7 +23,7 @@ func routeRequiresAuth(host string) bool {
 	if err != nil {
 		return true
 	}
-	return route.EnforceAuth // you should add this field to your Route struct
+	return route.EnforceAuth
 }
 
 // Middleware to check authentication and redirect to login if needed
@@ -46,11 +46,14 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		log.Printf("[AUTH] Checking authentication via cookie")
 
 		cookie, err := r.Cookie(authCookieName)
+
+		// TODO this is not an encrypted value. Make this proper api key
 		if err != nil || cookie.Value != os.Getenv("LATIOS_AUTH_COOKIE") {
 
 			log.Printf("[AUTH] Checking authentication via header")
 			header := r.Header.Get(authHeaderName)
 
+			// TODO this is bullshit, just because a request is of method GET does not mean it is made via a browser that has to be redirected
 			if header == "" {
 				if r.Method == http.MethodGet {
 					log.Printf("[AUTH] Not authenticated, redirecting to login")
@@ -64,6 +67,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 				}
 			}
 
+			// TODO simplify these two
 			if !strings.HasPrefix(header, "Bearer ") {
 				log.Printf("[AUTH] Invalid Authorization format")
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -88,10 +92,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 // Handle the login page GET and POST
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
+
+	// Show simple login form
 	case http.MethodGet:
-		// Show simple login form
 		redirect := r.URL.Query().Get("redirect")
-		loginPage(w,r,redirect, "")
+		loginPage(w, r, redirect, "")
+
+	// Try to login user via username and password
 	case http.MethodPost:
 		err := r.ParseForm()
 		if err != nil {
@@ -121,9 +128,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 				redirect = "/"
 			}
 			http.Redirect(w, r, redirect, http.StatusFound)
+
 		} else {
 			log.Printf("[AUTH] Invalid credentials for user %s", username)
-			loginPage(w,r,redirect, "Invalid username or password")
+			loginPage(w, r, redirect, "Invalid username or password")
 		}
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -138,8 +146,8 @@ func validateCredentials(username, password string) bool {
 
 //go:embed templates/login.html
 var loginHTML string
-
 var login_template = template.Must(template.New("login.html").Parse(loginHTML))
+
 type LoginData struct {
 	Redirect string
 	ErrorMsg string
