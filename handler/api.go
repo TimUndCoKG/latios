@@ -1,11 +1,30 @@
+// In handler/api.go
 package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/timsalokat/latios_proxy/db"
 )
+
+// RegisterApiHandlers registers all the /latios-api endpoints.
+func RegisterApiHandlers(router *http.ServeMux) {
+	log.Println("[ROUTER] Setting up API routes...")
+
+	// Define your API routes here
+	apiRoutes := map[string]http.HandlerFunc{
+		"/latios-api/routes": RoutesApiHandler,
+		"/latios-api/login":  LoginHandler,
+		"/latios-api/health": HealthCheckHandler,
+	}
+
+	for path, handler := range apiRoutes {
+		log.Printf("[ROUTER] Adding API path: %s\n", path)
+		router.HandleFunc(path, handler)
+	}
+}
 
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)

@@ -34,8 +34,9 @@ services:
       POSTGRES_DB: latios
       POSTGRES_USER: user
       POSTGRES_PASSWORD: pass
-    volumes:
-      - /opt/latios/data:/var/lib/postgresql/data
+    # Remove persistent volume for dev
+    # volumes:
+    #   - /opt/latios/data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
       - latios-network

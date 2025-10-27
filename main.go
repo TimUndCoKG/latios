@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"embed"
 	"log"
 	"net/http"
 	"os"
@@ -13,11 +14,8 @@ import (
 	"github.com/timsalokat/latios_proxy/handler"
 )
 
-var RedirectIgnores = map[string]func(http.ResponseWriter, *http.Request){
-	"/latios/routes": handler.RoutesApiHandler,
-	"/latios/login":  handler.LoginHandler,
-	"/latios/health": handler.HealthCheckHandler,
-}
+//go:embed all:latios-frontend/dist
+var content embed.FS
 
 func main() {
 	log.Println("[BOOT] Starting Latios proxy...")
@@ -37,16 +35,20 @@ func main() {
 	}
 
 	router := http.NewServeMux()
+
+	// Register /latios-api and /latios
+	handler.RegisterApiHandlers(router)
+	if err := handler.RegisterFrontendHandlers(router, content); err != nil {
+		log.Fatalf("[BOOT] Failed to register frontend handlers: %v", err)
+	}
+
+	// Register proxy handler
+	log.Println("[ROUTER] Setting up default proxy handler for /")
+	router.HandleFunc("/", handler.ProxyHandler)
+
 	log.Println("[MIDDLEWARE] Adding request logging middleware...")
 	loggedRouter := loggingMiddleware(router)
 	secureRouter := handler.AuthMiddleware(loggedRouter)
-
-	log.Println("[ROUTER] Setting up routes...")
-	for key, value := range RedirectIgnores {
-		log.Printf("[ROUTER] Adding ignored redirect path: %s\n", key)
-		router.HandleFunc(key, value)
-	}
-	router.HandleFunc("/", handler.ProxyHandler)
 
 	log.Println("[SERVE] Starting HTTP and HTTPS servers...")
 	serve(secureRouter)
@@ -97,13 +99,12 @@ func serve(router http.Handler) {
 
 func httpHandler(router http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[HTTP-REDIRECT] Request: %s %s Host=%s", r.Method, r.URL.Path, r.Host)
+		log.Printf("[HTTP] Request: %s %s Host=%s", r.Method, r.URL.Path, r.Host)
 
-		// Get route from database
 		route, err := db.GetRoute(r.Host)
 		if err != nil {
 			log.Printf("[DB] No HTTPS route for host=%s: %v", r.Host, err)
-			router.ServeHTTP(w, r) // just let router handle (includes /latios/*)
+			router.ServeHTTP(w, r) // Pass to main router
 			return
 		}
 
@@ -114,7 +115,6 @@ func httpHandler(router http.Handler) http.Handler {
 			return
 		}
 
-		// Otherwise, handle normally
 		router.ServeHTTP(w, r)
 	})
 }

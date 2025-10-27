@@ -32,7 +32,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
 		// If the path is the login page, skip auth
-		if r.URL.Path == "/latios/login" {
+		if r.URL.Path == "/latios-api/login" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -57,7 +57,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			if header == "" {
 				if r.Method == http.MethodGet {
 					log.Printf("[AUTH] Not authenticated, redirecting to login")
-					loginURL := fmt.Sprintf("/latios/login?redirect=%s", url.QueryEscape(r.URL.String()))
+					loginURL := fmt.Sprintf("/latios-api/login?redirect=%s", url.QueryEscape(r.URL.String()))
 					http.Redirect(w, r, loginURL, http.StatusFound)
 					return
 				} else {
