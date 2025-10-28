@@ -9,7 +9,7 @@ import (
 	"github.com/timsalokat/latios_proxy/db"
 )
 
-var logPrefix = "proxy-logger - "
+var logPrefix = "[PROXY] - "
 
 func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	host := r.Host

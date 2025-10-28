@@ -29,13 +29,14 @@ func routeRequiresAuth(host string) bool {
 // Middleware to check authentication and redirect to login if needed
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
-		// If the path is the login page, skip auth
-		if r.URL.Path == "/latios-api/login" {
+		// If the path is the login page or the healthcheck, skip auth
+		if r.URL.Path == "/latios-api/login" || r.URL.Path == "/latios-api/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
+
+		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
 		if !routeRequiresAuth(r.Host) {
 			// Route doesn't need auth

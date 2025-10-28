@@ -56,9 +56,13 @@ func main() {
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[REQUEST] Method=%s Path=%s RemoteAddr=%s Host=%s Headers=%v",
-			r.Method, r.URL.Path, r.RemoteAddr, r.Host, r.Header)
-		next.ServeHTTP(w, r)
+		if r.URL.Path != "/latios-api/health" || r.Host == "localhost" {
+			next.ServeHTTP(w, r)
+		} else {
+			log.Printf("[LOG-MW REQUEST] Method=%s Path=%s RemoteAddr=%s Host=%s Headers=%v",
+				r.Method, r.URL.Path, r.RemoteAddr, r.Host, r.Header)
+			next.ServeHTTP(w, r)
+		}
 	})
 }
 
@@ -99,22 +103,27 @@ func serve(router http.Handler) {
 
 func httpHandler(router http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[HTTP] Request: %s %s Host=%s", r.Method, r.URL.Path, r.Host)
+		if r.URL.Path == "/latios-api/health" || r.Host == "localhost" {
+			router.ServeHTTP(w, r)
+		} else {
+			// log.Printf("[HTTP] Request: %s %s Host=%s", r.Method, r.URL.Path, r.Host)
 
-		route, err := db.GetRoute(r.Host)
-		if err != nil {
-			log.Printf("[DB] No HTTPS route for host=%s: %v", r.Host, err)
-			router.ServeHTTP(w, r) // Pass to main router
-			return
+			route, err := db.GetRoute(r.Host)
+			if err != nil {
+				log.Printf("[DB] No route for domain=%s: %v", r.Host, err)
+				router.ServeHTTP(w, r) // Pass to main router
+				return
+			}
+
+			if route.UseHTTPS {
+				target := "https://" + strings.Split(r.Host, ":")[0] + r.URL.RequestURI()
+				log.Printf("[HTTP-REDIRECT] Redirecting to HTTPS: %s", target)
+				http.Redirect(w, r, target, http.StatusPermanentRedirect)
+				return
+			}
+
+			router.ServeHTTP(w, r)
 		}
 
-		if route.UseHTTPS {
-			target := "https://" + strings.Split(r.Host, ":")[0] + r.URL.RequestURI()
-			log.Printf("[HTTP-REDIRECT] Redirecting to HTTPS: %s", target)
-			http.Redirect(w, r, target, http.StatusPermanentRedirect)
-			return
-		}
-
-		router.ServeHTTP(w, r)
 	})
 }
