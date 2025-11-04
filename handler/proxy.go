@@ -26,6 +26,7 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Serve static file
 	if route.IsStatic {
+		log.Println("Serving static route with path: " + route.TargetPath)
 		http.StripPrefix("/", http.FileServer(http.Dir(route.TargetPath))).ServeHTTP(w, r)
 		return
 	}
