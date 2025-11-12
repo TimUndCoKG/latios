@@ -23,6 +23,7 @@ services:
       - "443:443"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www:/var/www
     restart: unless-stopped
     networks:
       - latios-network
