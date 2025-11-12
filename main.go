@@ -57,10 +57,10 @@ func main() {
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/latios-api/health" || r.Host == "localhost" {
-			next.ServeHTTP(w, r)
-		} else {
 			log.Printf("[LOG-MW REQUEST] Method=%s Path=%s RemoteAddr=%s Host=%s Headers=%v",
 				r.Method, r.URL.Path, r.RemoteAddr, r.Host, r.Header)
+			next.ServeHTTP(w, r)
+		} else {
 			next.ServeHTTP(w, r)
 		}
 	})
