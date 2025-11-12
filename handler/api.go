@@ -73,6 +73,8 @@ func RoutesApiHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		db.AddRouteToCache(route)
+
 		println("Created route:", route.Domain)
 		w.WriteHeader(http.StatusCreated)
 
@@ -98,7 +100,8 @@ func RoutesApiHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		delete(db.MemoryRoutes, delBody.Domain)
+		db.DeleteRouteFromCache(delBody.Domain)
+
 		println("Deleted route:", delBody.Domain)
 		w.WriteHeader(http.StatusOK)
 
