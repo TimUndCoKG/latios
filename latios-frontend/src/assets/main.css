@@ -2,3 +2,6 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+#app {
+    overflow: hidden;
+}

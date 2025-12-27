@@ -22,4 +22,11 @@ import { RouterLink, RouterView } from 'vue-router'
     padding: 1rem;
   }
 
+  @media (max-width: 1200px) {
+    .wrapper{
+      width: fit-content;
+      height: fit-content;
+    }
+  }
+
 </style>

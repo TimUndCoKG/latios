@@ -7,11 +7,11 @@ import Stats from '@/components/Stats.vue';
 
 <template>
   <div class="main">
-    <Routes></Routes>
     <div class="sub">
       <Stats></Stats>
-      <Logs></Logs>
+      <Routes></Routes>
     </div>
+    <Logs></Logs>
   </div>
 </template>
 
@@ -22,11 +22,22 @@ import Stats from '@/components/Stats.vue';
     grid-template-rows: auto;
     gap: 2rem;
     padding: 2rem;
+    overflow: hidden;
   }
 
   .sub {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  @media (max-width: 1200px) {
+    .main {
+      overflow-y: auto;
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 1fr;
+      padding: 1rem;
+      gap: 1rem;
+    }
   }
 </style>

@@ -40,7 +40,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-base-200 border-base-300 rounded-box border p-4">
+  <div class="bg-base-200 border-base-300 rounded-box border p-4 log_box">
     <div class="header">
       <h2>Logs</h2>
 
@@ -87,5 +87,11 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 1rem;
   gap: 2rem;
+}
+
+@media (max-width: 1200px) {
+  .log_box {
+    width: calc(100vw - 4rem);
+  }
 }
 </style>
