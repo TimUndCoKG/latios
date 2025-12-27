@@ -13,6 +13,7 @@ import (
 	"github.com/timsalokat/latios_proxy/db"
 	"github.com/timsalokat/latios_proxy/handler"
 	"github.com/timsalokat/latios_proxy/middleware"
+	"golang.org/x/time/rate"
 )
 
 //go:embed all:latios-frontend/dist
@@ -43,11 +44,14 @@ func main() {
 		log.Fatalf("[BOOT] Failed to register frontend handlers: %v", err)
 	}
 
+	// Global rate limiter for all proxied traffix: 100 requests per second and bursts of 150 allowed
+	globalProxyLimiter := middleware.NewIPRateLimiter(rate.Limit(100), 150)
+
 	// Register proxy handler
 	log.Println("[ROUTER] Setting up default proxy handler for /")
-	router.HandleFunc("/", handler.ProxyHandler)
+	router.Handle("/", globalProxyLimiter.RateLimitMiddleware(http.HandlerFunc(handler.ProxyHandler)))
 
-	log.Println("[MIDDLEWARE] Adding request logging middleware...")
+	log.Println("[MIDDLEWARE] Adding analytics middleware...")
 	var loggedRouter http.Handler = middleware.AnalyticsMiddleware(router)
 	secureRouter := handler.AuthMiddleware(loggedRouter)
 

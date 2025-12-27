@@ -8,24 +8,29 @@ import (
 	"time"
 
 	"github.com/timsalokat/latios_proxy/db"
+	"github.com/timsalokat/latios_proxy/middleware"
+	"golang.org/x/time/rate"
 )
 
 // RegisterApiHandlers registers all the /latios-api endpoints.
 func RegisterApiHandlers(router *http.ServeMux) {
 	log.Println("[ROUTER] Setting up API routes...")
 
+	loginLimiter := middleware.NewIPRateLimiter(rate.Every(time.Minute/5), 5)
+	apiLimiter := middleware.NewIPRateLimiter(rate.Limit(10), 20)
+
 	// Define your API routes here
-	apiRoutes := map[string]http.HandlerFunc{
-		"/latios-api/routes": RoutesApiHandler,
-		"/latios-api/login":  LoginHandler,
-		"/latios-api/health": HealthCheckHandler,
-		"/latios-api/stats":  StatsApiHandler,
-		"/latios-api/logs":   LogsApiHandler,
+	apiRoutes := map[string]http.Handler{
+		"/latios-api/health": http.HandlerFunc(HealthCheckHandler),
+		"/latios-api/login":  loginLimiter.RateLimitMiddleware(http.HandlerFunc(LoginHandler)),
+		"/latios-api/routes": apiLimiter.RateLimitMiddleware(http.HandlerFunc(RoutesApiHandler)),
+		"/latios-api/stats":  apiLimiter.RateLimitMiddleware(http.HandlerFunc(StatsApiHandler)),
+		"/latios-api/logs":   apiLimiter.RateLimitMiddleware(http.HandlerFunc(LogsApiHandler)),
 	}
 
 	for path, handler := range apiRoutes {
 		log.Printf("[ROUTER] Adding API path: %s\n", path)
-		router.HandleFunc(path, handler)
+		router.Handle(path, handler)
 	}
 }
 
