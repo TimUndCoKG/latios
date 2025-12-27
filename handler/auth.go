@@ -65,15 +65,17 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// If the path is the login page or the healthcheck, skip auth
-		isFrontend := strings.HasPrefix(r.URL.Path, "/latios/assets/") || r.URL.Path == "/latios/login"
-		if isFrontend || r.URL.Path == "/latios-api/login" || r.URL.Path == "/latios-api/health" {
+		if strings.HasPrefix(r.URL.Path, "/latios/assets/") ||
+			r.URL.Path == "/latios/login" ||
+			r.URL.Path == "/latios-api/login" ||
+			r.URL.Path == "/latios-api/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
-		if !routeRequiresAuth(r.Host) {
+		if !strings.HasPrefix(r.URL.Path, "/latios") && !routeRequiresAuth(r.Host) {
 			log.Printf("[AUTH] Route does not require auth, proceeding")
 			next.ServeHTTP(w, r)
 			return
