@@ -1,11 +1,14 @@
 package db
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
 	"sync"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
@@ -41,9 +44,15 @@ func InitDB() {
 	err = Client.AutoMigrate(
 		&Route{},
 		&RequestLog{},
+		&User{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate: %v", err)
+	}
+
+	err = ensureBaseUser()
+	if err != nil {
+		log.Fatalf("failed to ensure base admin user: %v", err)
 	}
 
 	err = loadRoutesIntoMemory()
@@ -74,6 +83,47 @@ func getEnv(key, fallback string) string {
 		return val
 	}
 	return fallback
+}
+
+func ensureBaseUser() error {
+	var userCount int64
+	err := Client.Model(&User{}).Count(&userCount).Error
+	if err != nil {
+		return err
+	}
+
+	if userCount == 0 {
+		log.Printf("[AUTH] Creating admin user")
+
+		bytes := make([]byte, 16)
+		rand.Read(bytes)
+		password := base64.StdEncoding.EncodeToString(bytes)
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("Failed to hash password: %v", err)
+			return err
+		}
+
+		user := User{
+			Username: "admin",
+			Password: string(hashedPassword),
+		}
+
+		if err := Client.Create(&user).Error; err != nil {
+			log.Fatalf("Failed to create base user: %v", err)
+			return err
+		}
+
+		log.Println("######################################")
+		log.Printf("[AUTH] Base user created")
+		log.Printf("[AUTH] Username: admin")
+		log.Printf("[AUTH] Password: %s", password)
+		log.Println("######################################")
+	}
+
+	return nil
+
 }
 
 func GetRoute(domain string) (Route, error) {

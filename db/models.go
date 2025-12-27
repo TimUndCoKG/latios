@@ -21,3 +21,9 @@ type RequestLog struct {
 	LatencyMs  int64     `json:"latency_ms"`
 	RemoteAddr string    `json:"remote_addr"`
 }
+
+type User struct {
+	ID       uint   `gorm:"primaryKey"`
+	Username string `gorm:"uniqueIndex"`
+	Password string
+}

@@ -11,11 +11,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/timsalokat/latios_proxy/db"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var authCookieName = "latios_auth"
-var authHeaderName = "latios_auth"
+var jwtKey = []byte(os.Getenv("LATIOS_SECRET_KEY"))
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
 
 // Simple check if route requires security
 func routeRequiresAuth(host string) bool {
@@ -24,6 +31,27 @@ func routeRequiresAuth(host string) bool {
 		return true
 	}
 	return route.EnforceAuth
+}
+
+func validateCredentials(username, password string) bool {
+	var user db.User
+	if err := db.Client.Where("username = ?", username).First(&user).Error; err != nil {
+		return false
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	return err == nil
+}
+
+func generateToken(username string) (string, error) {
+	exporationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(exporationTime),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
 }
 
 // Middleware to check authentication and redirect to login if needed
@@ -39,51 +67,35 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
 		if !routeRequiresAuth(r.Host) {
-			// Route doesn't need auth
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Check if user is authenticated via cookie
-		log.Printf("[AUTH] Checking authentication via cookie")
 
-		cookie, err := r.Cookie(authCookieName)
-
-		// TODO this is not an encrypted value. Make this proper api key
-		if err != nil || cookie.Value != os.Getenv("LATIOS_AUTH_COOKIE") {
-
-			log.Printf("[AUTH] Checking authentication via header")
-			header := r.Header.Get(authHeaderName)
-
-			// TODO this is bullshit, just because a request is of method GET does not mean it is made via a browser that has to be redirected
-			if header == "" {
-				if r.Method == http.MethodGet {
-					log.Printf("[AUTH] Not authenticated, redirecting to login")
-					loginURL := fmt.Sprintf("/latios-api/login?redirect=%s", url.QueryEscape(r.URL.String()))
-					http.Redirect(w, r, loginURL, http.StatusFound)
-					return
-				} else {
-					log.Println("[AUTH] Invalid Authorization header")
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
-				}
-			}
-
-			// TODO simplify these two
-			if !strings.HasPrefix(header, "Bearer ") {
-				log.Printf("[AUTH] Invalid Authorization format")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			token := strings.TrimPrefix(header, "Bearer ")
-			if token != os.Getenv("LATIOS_AUTH_TOKEN") {
-				log.Println("[AUTH] Invalid Authorization header")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
+		tokenString := ""
+		if cookie, err := r.Cookie(authCookieName); err == nil {
+			tokenString = cookie.Value
+		} else {
+			header := r.Header.Get("Authorization")
+			if strings.HasPrefix(header, "Bearer ") {
+				tokenString = strings.TrimPrefix(header, "Bearer ")
 			}
 		}
 
-		// Authenticated, proceed
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+
+		if err != nil || !token.Valid {
+			if r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/latios-api/") {
+				loginURL := fmt.Sprintf("/latios-api/login?redirect=%s", url.QueryEscape(r.URL.String()))
+				http.Redirect(w, r, loginURL, http.StatusFound)
+			} else {
+				http.Error(w, "Unatuhorized", http.StatusUnauthorized)
+			}
+			return
+		}
+
 		log.Printf("[AUTH] Authenticated user, proceeding")
 		next.ServeHTTP(w, r)
 
@@ -115,13 +127,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		if validateCredentials(username, password) {
 			// Set cookie
+			token, err := generateToken(username)
+			if err != nil {
+				log.Printf("[AUHT] Couldnt create token for user: %s", username)
+				loginPage(w, r, redirect, "Couldnt create token")
+			}
+
 			http.SetCookie(w, &http.Cookie{
 				Name:     authCookieName,
-				Value:    os.Getenv("LATIOS_AUTH_COOKIE"),
+				Value:    token,
 				Path:     "/",
 				HttpOnly: true,
 				Secure:   isSecure,
-				Expires:  time.Now().Add(4 * time.Hour),
+				Expires:  time.Now().Add(24 * time.Hour),
+				SameSite: http.SameSiteLaxMode, // prevents csrf attacks (not sure if this option doesnt deny my sso)
 			})
 
 			log.Printf("[AUTH] User %s logged in successfully, redirecting to %s", username, redirect)
@@ -137,12 +156,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-func validateCredentials(username, password string) bool {
-	expectedUser := os.Getenv("FALLBACK_USER")
-	expectedPass := os.Getenv("FALLBACK_PASSWORD")
-	return username == expectedUser && password == expectedPass
 }
 
 //go:embed templates/login.html
