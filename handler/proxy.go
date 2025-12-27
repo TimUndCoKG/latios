@@ -1,6 +1,8 @@
 package handler
 
 import (
+	_ "embed"
+	"html/template"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -8,6 +10,20 @@ import (
 
 	"github.com/timsalokat/latios_proxy/db"
 )
+
+//go:embed templates/404.html
+var notFoundHTML string
+var notFoundTemplate = template.Must(template.New("404").Parse(notFoundHTML))
+
+func serveNotFound(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+	data := struct {
+		Host string
+	}{
+		Host: r.Host,
+	}
+	notFoundTemplate.Execute(w, data)
+}
 
 var logPrefix = "[PROXY] - "
 
@@ -20,7 +36,8 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	// Find route
 	result := db.Client.Where("domain = ?", host).First(&route)
 	if result.Error != nil {
-		http.Error(w, "route not found", http.StatusNotFound)
+		serveNotFound(w, r)
+		// http.Error(w, "route not found", http.StatusNotFound)
 		return
 	}
 
