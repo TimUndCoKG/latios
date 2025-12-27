@@ -74,6 +74,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		log.Printf("[AUTH] Checking authentication for host: %s path: %s", r.Host, r.URL.Path)
 
 		if !routeRequiresAuth(r.Host) {
+			log.Printf("[AUTH] Route does not require auth, proceeding")
 			next.ServeHTTP(w, r)
 			return
 		}
