@@ -2,8 +2,8 @@ package handler
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"net/url"
@@ -22,6 +22,12 @@ var jwtKey = []byte(os.Getenv("LATIOS_SECRET_KEY"))
 type Claims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Redirect string `json:"redirect"`
 }
 
 // Simple check if route requires security
@@ -59,7 +65,8 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// If the path is the login page or the healthcheck, skip auth
-		if r.URL.Path == "/latios-api/login" || r.URL.Path == "/latios-api/health" {
+		isFrontend := strings.HasPrefix(r.URL.Path, "/latios/assets/") || r.URL.Path == "/latios/login"
+		if isFrontend || r.URL.Path == "/latios-api/login" || r.URL.Path == "/latios-api/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -88,7 +95,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		if err != nil || !token.Valid {
 			if r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/latios-api/") {
-				loginURL := fmt.Sprintf("/latios-api/login?redirect=%s", url.QueryEscape(r.URL.String()))
+				loginURL := fmt.Sprintf("/latios/login?redirect=%s", url.QueryEscape(r.URL.String()))
 				http.Redirect(w, r, loginURL, http.StatusFound)
 			} else {
 				http.Error(w, "Unatuhorized", http.StatusUnauthorized)
@@ -106,22 +113,18 @@ func AuthMiddleware(next http.Handler) http.Handler {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 
-	// Show simple login form
-	case http.MethodGet:
-		redirect := r.URL.Query().Get("redirect")
-		loginPage(w, r, redirect, "")
-
 	// Try to login user via username and password
 	case http.MethodPost:
-		err := r.ParseForm()
-		if err != nil {
+		var req LoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Printf("[AUTH] Error decoding login json: %v", err)
 			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
-		username := r.Form.Get("username")
-		password := r.Form.Get("password")
-		redirect := r.Form.Get("redirect")
+		username := req.Username
+		password := req.Password
+		redirect := req.Redirect
 
 		isSecure := r.TLS != nil
 
@@ -129,8 +132,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			// Set cookie
 			token, err := generateToken(username)
 			if err != nil {
-				log.Printf("[AUHT] Couldnt create token for user: %s", username)
-				loginPage(w, r, redirect, "Couldnt create token")
+				log.Printf("[AUTH] Couldnt create token for user: %s", username)
+				gotoLogin(w, r)
 			}
 
 			http.SetCookie(w, &http.Cookie{
@@ -150,30 +153,15 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, redirect, http.StatusFound)
 
 		} else {
-			log.Printf("[AUTH] Invalid credentials for user %s", username)
-			loginPage(w, r, redirect, "Invalid username or password")
+			log.Printf("[AUTH] Invalid credentials for user: %s", username)
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		}
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-//go:embed templates/login.html
-var loginHTML string
-var login_template = template.Must(template.New("login.html").Parse(loginHTML))
-
-type LoginData struct {
-	Redirect string
-	ErrorMsg string
-}
-
-func loginPage(w http.ResponseWriter, r *http.Request, redirect string, err string) {
-	data := LoginData{
-		Redirect: redirect,
-		ErrorMsg: err,
-	}
-
-	if err := login_template.Execute(w, data); err != nil {
-		http.Error(w, "Error rendering template", http.StatusInternalServerError)
-	}
+func gotoLogin(w http.ResponseWriter, r *http.Request) {
+	loginURL := fmt.Sprintf("/latios/login?redirect=%s", url.QueryEscape(r.URL.String()))
+	http.Redirect(w, r, loginURL, http.StatusFound)
 }

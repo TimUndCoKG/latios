@@ -52,7 +52,7 @@ onMounted(() => {
 
     <div v-if="error">Error: {{ error }}</div>
 
-    <div v-else-if="logs.length" class="overflow-x-auto">
+    <div v-else-if="logs.length" class="overflow-x-auto max-h-160">
       <table class="table">
 
         <thead>

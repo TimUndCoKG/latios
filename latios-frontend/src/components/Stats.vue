@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+// const stats = ref({
+//   total_requests: 2598,
+//   error_count: 2347,
+//   avg_latency_ms: .457
+// })
 const stats = ref()
 const error = ref(null)
 
@@ -27,6 +32,13 @@ async function fetchStats() {
 onMounted(() => {
   fetchStats()
 })
+
+function convertNum(num: number): string {
+  if (num >= 1000) {
+    return (num / 1000).toFixed(2).toString() + "K"
+  }
+  return num.toString()
+}
 </script>
 
 <template>
@@ -43,7 +55,7 @@ onMounted(() => {
     <div v-if="error">Error: {{ error }}</div>
 
     <div v-if="stats != undefined" class="overflow-x-auto">
-      <div class="stats shadow">
+      <div class="stats shadow flex ">
         <div class="stat">
           <!-- <div class="stat-figure text-secondary">
             <svg
@@ -61,19 +73,19 @@ onMounted(() => {
             </svg>
           </div> -->
           <div class="stat-title">Total Requests</div>
-          <div class="stat-value">{{ stats.total_requests }}</div>
+          <div class="stat-value">{{ convertNum(stats.total_requests) }}</div>
           <div class="stat-desc">Last 30 days</div>
         </div>
 
         <div class="stat">
           <div class="stat-title">Errors</div>
-          <div class="stat-value">{{ stats.error_count }}</div>
+          <div class="stat-value">{{ convertNum(stats.error_count) }}</div>
           <div class="stat-desc">400+ status</div>
         </div>
 
          <div class="stat">
           <div class="stat-title">Response time</div>
-          <div class="stat-value">{{ stats.avg_latency_ms.toFixed(4) }}ms</div>
+          <div class="stat-value">{{ stats.avg_latency_ms.toFixed(2) }}ms</div>
           <div class="stat-desc"></div>
         </div>
       </div>

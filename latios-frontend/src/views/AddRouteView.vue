@@ -62,10 +62,10 @@ function cancel() {
 </script>
 
 <template>
-  <div>
+  <div class="bg-base-200 rounded-box p-4">
     <form class="header" @submit.prevent="addRoute" @reset.prevent="cancel">
-      <fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xs border p-4">
-        <legend class="fieldset-legend">Add Route</legend>
+      <fieldset class="fieldset w-xs">
+        <legend class="fieldset-legend text-2xl">Add Route</legend>
 
         <label class="label">Domain</label>
         <input v-model="domain" class="input" placeholder="dummy.yourdomain.com" required />
@@ -73,17 +73,17 @@ function cancel() {
         <label class="label">Target</label>
         <input v-model="targetPath" class="input" placeholder="http://docker-container:1234" required />
 
-        <label class="label flex justify-between">
+        <label class="label flex justify-between pt-3">
           <p>Static Path</p>
           <input v-model="isStatic" type="checkbox" class="checkbox" />
         </label>
 
-        <label class="label flex justify-between">
+        <label class="label flex justify-between pt-1">
           <p>Enforce Auth</p>
           <input v-model="enforceAuth" type="checkbox" class="checkbox" />
         </label>
 
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-3 pt-3">
             <button type="submit" class="btn btn-primary mt-4">Submit</button>
             <button type="reset" class="btn btn-outline mt-4">Back</button>
         </div>
