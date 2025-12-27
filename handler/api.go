@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/timsalokat/latios_proxy/db"
 )
@@ -18,6 +19,8 @@ func RegisterApiHandlers(router *http.ServeMux) {
 		"/latios-api/routes": RoutesApiHandler,
 		"/latios-api/login":  LoginHandler,
 		"/latios-api/health": HealthCheckHandler,
+		"/latios-api/stats":  StatsApiHandler,
+		"/latios-api/logs":   LogsApiHandler,
 	}
 
 	for path, handler := range apiRoutes {
@@ -109,4 +112,34 @@ func RoutesApiHandler(w http.ResponseWriter, r *http.Request) {
 		println("Received unsupported method:", r.Method)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func StatsApiHandler(w http.ResponseWriter, r *http.Request) {
+	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	var stats struct {
+		TotalRequests int64   `json:"total_requests"`
+		ErrorCount    int64   `json:"error_count"`
+		AvgLatency    float64 `json:"avg_latency_ms"`
+	}
+	db.Client.Model(&db.RequestLog{}).
+		Where("timestamp > ?", thirtyDaysAgo).
+		Count(&stats.TotalRequests)
+	// TODO refine this to actually only measure service error codes and not route not found errors
+	db.Client.Model(&db.RequestLog{}).
+		Where("timestamp > ? AND status_code >= ?", thirtyDaysAgo, 400).
+		Count(&stats.ErrorCount)
+	db.Client.Model(&db.RequestLog{}).
+		Where("timestamp > ?", thirtyDaysAgo).
+		Select("AVG(latency_ms)").
+		Scan(&stats.AvgLatency)
+
+	json.NewEncoder(w).Encode(stats)
+}
+
+func LogsApiHandler(w http.ResponseWriter, r *http.Request) {
+	var logs []db.RequestLog
+	// Last 100 logs
+	// TODO add pagination option here
+	db.Client.Order("timestamp desc").Limit(100).Find(&logs)
+	json.NewEncoder(w).Encode(logs)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/timsalokat/latios_proxy/config"
 	"github.com/timsalokat/latios_proxy/db"
 	"github.com/timsalokat/latios_proxy/handler"
+	"github.com/timsalokat/latios_proxy/middleware"
 )
 
 //go:embed all:latios-frontend/dist
@@ -47,23 +48,11 @@ func main() {
 	router.HandleFunc("/", handler.ProxyHandler)
 
 	log.Println("[MIDDLEWARE] Adding request logging middleware...")
-	loggedRouter := loggingMiddleware(router)
+	var loggedRouter http.Handler = middleware.AnalyticsMiddleware(router)
 	secureRouter := handler.AuthMiddleware(loggedRouter)
 
 	log.Println("[SERVE] Starting HTTP and HTTPS servers...")
 	serve(secureRouter)
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/latios-api/health" || r.Host == "localhost" {
-			log.Printf("[LOG-MW REQUEST] Method=%s Path=%s RemoteAddr=%s Host=%s Headers=%v",
-				r.Method, r.URL.Path, r.RemoteAddr, r.Host, r.Header)
-			next.ServeHTTP(w, r)
-		} else {
-			next.ServeHTTP(w, r)
-		}
-	})
 }
 
 func serve(router http.Handler) {

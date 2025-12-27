@@ -38,7 +38,10 @@ func InitDB() {
 		log.Fatalf("failed to connect database: %v", err)
 	}
 
-	err = Client.AutoMigrate(&Route{})
+	err = Client.AutoMigrate(
+		&Route{},
+		&RequestLog{},
+	)
 	if err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
