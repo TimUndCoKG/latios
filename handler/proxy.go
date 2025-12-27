@@ -43,7 +43,7 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Serve static file
 	if route.IsStatic {
-		log.Println("Serving static route with path: " + route.TargetPath)
+		// log.Println("Serving static route with path: " + route.TargetPath)
 		http.StripPrefix("/", http.FileServer(http.Dir(route.TargetPath))).ServeHTTP(w, r)
 		return
 	}
@@ -62,7 +62,7 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Header.Set("X-Proxied-By", "Latios")
 
 		// Log status code and headers
-		log.Printf("%sProxied response: %d %s", logPrefix, resp.StatusCode, resp.Status)
+		// log.Printf("%sProxied response: %d %s", logPrefix, resp.StatusCode, resp.Status)
 		for k, v := range resp.Header {
 			log.Printf("%sHeader: %s=%v", logPrefix, k, v)
 		}
@@ -75,6 +75,6 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "proxy error", http.StatusBadGateway)
 	}
 
-	log.Println(logPrefix + "Request proxied")
+	// log.Println(logPrefix + "Request proxied")
 	proxy.ServeHTTP(w, r)
 }

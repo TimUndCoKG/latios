@@ -94,25 +94,18 @@ func httpHandler(router http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/latios-api/health" || r.Host == "localhost" {
 			router.ServeHTTP(w, r)
-		} else {
-			// log.Printf("[HTTP] Request: %s %s Host=%s", r.Method, r.URL.Path, r.Host)
-
-			route, err := db.GetRoute(r.Host)
-			if err != nil {
-				log.Printf("[DB] No route for domain=%s: %v", r.Host, err)
-				router.ServeHTTP(w, r) // Pass to main router
-				return
-			}
-
-			if route.UseHTTPS {
-				target := "https://" + strings.Split(r.Host, ":")[0] + r.URL.RequestURI()
-				log.Printf("[HTTP-REDIRECT] Redirecting to HTTPS: %s", target)
-				http.Redirect(w, r, target, http.StatusPermanentRedirect)
-				return
-			}
-
-			router.ServeHTTP(w, r)
+			return
 		}
+		// log.Printf("[HTTP] Request: %s %s Host=%s", r.Method, r.URL.Path, r.Host)
+
+		if os.Getenv("ENVIRONMENT") != "dev" {
+			target := "https://" + strings.Split(r.Host, ":")[0] + r.URL.RequestURI()
+			log.Printf("[HTTP-FORCE-HTTPS] Redirecting %s to %s", r.Host, target)
+			http.Redirect(w, r, target, http.StatusPermanentRedirect)
+			return
+		}
+
+		router.ServeHTTP(w, r)
 
 	})
 }

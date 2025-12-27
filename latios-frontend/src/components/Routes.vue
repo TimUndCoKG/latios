@@ -73,7 +73,6 @@ onMounted(() => {
 
         <thead>
           <tr>
-            <th>HTTPS</th>
             <th>Domain</th>
             <th>Target</th>
             <th>Use Auth</th>
@@ -85,9 +84,6 @@ onMounted(() => {
         <tbody>
           <tr v-for="route in (routes as any[])" :key="route.id"> 
             
-            <td>
-              <input type="checkbox" class="checkbox" :checked="route.use_https" disabled />
-            </td>
             <td>{{ route.domain }}</td>
             <td>{{ route.target_path }}</td>
             <td>

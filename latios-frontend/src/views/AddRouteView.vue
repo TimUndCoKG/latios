@@ -5,7 +5,6 @@ const error = ref<string | null>(null)
 const domain = ref('')
 const targetPath = ref('')
 const isStatic = ref(false)
-const useHTTPS = ref(false)
 const enforceAuth = ref(false)
 
 async function addRoute() {
@@ -14,7 +13,6 @@ async function addRoute() {
       domain: domain.value,
       target_path: targetPath.value,
       is_static: isStatic.value,
-      use_https: useHTTPS.value,
       enforce_auth: enforceAuth.value
     }
 
@@ -38,7 +36,6 @@ async function addRoute() {
     domain.value = ''
     targetPath.value = ''
     isStatic.value = false
-    useHTTPS.value = false
     enforceAuth.value = false
     error.value = null
 
@@ -56,7 +53,6 @@ function cancel() {
     domain.value = ''
     targetPath.value = ''
     isStatic.value = false
-    useHTTPS.value = false
     enforceAuth.value = false
     error.value = null
 
@@ -80,11 +76,6 @@ function cancel() {
         <label class="label flex justify-between">
           <p>Static Path</p>
           <input v-model="isStatic" type="checkbox" class="checkbox" />
-        </label>
-
-        <label class="label flex justify-between">
-          <p>Use HTTPS</p>
-          <input v-model="useHTTPS" type="checkbox" class="checkbox" />
         </label>
 
         <label class="label flex justify-between">

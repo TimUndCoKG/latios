@@ -21,6 +21,7 @@ import Stats from '@/components/Stats.vue';
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto;
     gap: 2rem;
+    padding: 2rem;
   }
 
   .sub {
