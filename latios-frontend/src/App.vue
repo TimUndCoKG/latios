@@ -17,16 +17,8 @@ import { RouterLink, RouterView } from 'vue-router'
     align-items: center;
     justify-content: center;
     width: 100vw;
-    height: 100dvh;
+    min-height: 100dvh;
     overflow: hidden;
     padding: 1rem;
   }
-
-  @media (max-width: 1200px) {
-    .wrapper{
-      width: fit-content;
-      height: fit-content;
-    }
-  }
-
 </style>

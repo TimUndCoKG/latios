@@ -40,9 +40,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-base-200 border-base-300 rounded-box border p-4 log_box">
+  <div class="bg-base-200 border-base-300 rounded-box border p-4 --box">
     <div class="header">
-      <h2>Logs</h2>
+      <h2>Logs (last 100)</h2>
 
       <div class="btn-group flex gap-2">
         <button class="btn btn-outline" @click="fetchLogs">Refresh</button>
@@ -61,6 +61,8 @@ onMounted(() => {
             <th>Method</th>
             <th>Timestamp</th>
             <th>Target</th>
+            <th>Remote</th>
+            <th>Latency</th>
           </tr>
         </thead>
 
@@ -70,6 +72,8 @@ onMounted(() => {
             <td>{{ log.method }}</td>
             <td>{{ formatDate(log.timestamp) }}</td>
             <td>{{ log.host }}{{ log.path }}</td>
+            <td>{{ log.remote_addr }}</td>
+            <td>{{ log.latency_ms }}</td>
           </tr>
         </tbody>
       </table>
@@ -89,9 +93,4 @@ onMounted(() => {
   gap: 2rem;
 }
 
-@media (max-width: 1200px) {
-  .log_box {
-    width: calc(100vw - 4rem);
-  }
-}
 </style>

@@ -42,7 +42,7 @@ function convertNum(num: number): string {
 </script>
 
 <template>
-  <div class="bg-base-200 border-base-300 rounded-box border p-4">
+  <div class="bg-base-200 border-base-300 rounded-box border p-4 --box">
     <div class="header">
       <h2>Stats (30d)</h2>
 
