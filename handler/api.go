@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/timsalokat/latios_proxy/db"
@@ -121,30 +122,57 @@ func RoutesApiHandler(w http.ResponseWriter, r *http.Request) {
 
 func StatsApiHandler(w http.ResponseWriter, r *http.Request) {
 	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
-	var stats struct {
-		TotalRequests int64   `json:"total_requests"`
-		ErrorCount    int64   `json:"error_count"`
-		AvgLatency    float64 `json:"avg_latency_ms"`
-	}
-	db.Client.Model(&db.RequestLog{}).
-		Where("timestamp > ?", thirtyDaysAgo).
-		Count(&stats.TotalRequests)
-	// TODO refine this to actually only measure service error codes and not route not found errors
-	db.Client.Model(&db.RequestLog{}).
-		Where("timestamp > ? AND status_code >= ?", thirtyDaysAgo, 400).
-		Count(&stats.ErrorCount)
-	db.Client.Model(&db.RequestLog{}).
-		Where("timestamp > ?", thirtyDaysAgo).
-		Select("AVG(latency_ms)").
-		Scan(&stats.AvgLatency)
 
+	var stats struct {
+		TotalRequests         int64   `json:"total_requests"`
+		TotalRequestsResolved int64   `json:"total_requests_resolved"`
+		ServerErrorCount      int64   `json:"server_error_count"`
+		ClientErrorCount      int64   `json:"client_error_count"`
+		NotFoundCount         int64   `json:"not_found_count"`
+		AvgLatency            float64 `json:"avg_latency_ms"`
+	}
+
+	err := db.Client.Model(&db.RequestLog{}).
+		Where("timestamp > ?", thirtyDaysAgo).
+		Select(`
+			COUNT(*) as total_requests,
+			COUNT(CASE WHEN status_code >= 200 AND status_code < 300 THEN 1 END) as total_requests_resolved,
+			COUNT(CASE WHEN status_code >= 500 THEN 1 END) as server_error_count,
+			COUNT(CASE WHEN status_code >= 400 AND status_code < 500 AND status_code != 404 THEN 1 END) as client_error_count,
+			COUNT(CASE WHEN status_code = 404 THEN 1 END) as not_found_count,
+			COALESCE(AVG(latency_ms), 0) as avg_latency_ms
+		`).
+		Scan(&stats).Error
+
+	if err != nil {
+		http.Error(w, "Failed to calculate stats", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
 }
 
 func LogsApiHandler(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+
+	pageStr := r.URL.Query().Get("page")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page <= 0 {
+		page = 1
+	}
+
+	offset := (page - 1) * limit
+
 	var logs []db.RequestLog
-	// Last 100 logs
-	// TODO add pagination option here
-	db.Client.Order("timestamp desc").Limit(100).Find(&logs)
+
+	result := db.Client.Order("timestamp desc").Limit(limit).Offset(offset).Find(&logs)
+
+	if result.Error != nil {
+		http.Error(w, "Failed to fetch logs", http.StatusInternalServerError)
+		return
+	}
+
 	json.NewEncoder(w).Encode(logs)
 }

@@ -3,7 +3,10 @@ import { ref, onMounted } from 'vue'
 
 // const stats = ref({
 //   total_requests: 2598,
-//   error_count: 2347,
+//   total_requests_resolved: 5,
+//   server_error_count: 347,
+//   client_error_count: 47,
+//   not_found_count: 237,
 //   avg_latency_ms: .457
 // })
 const stats = ref()
@@ -72,15 +75,15 @@ function convertNum(num: number): string {
               ></path>
             </svg>
           </div> -->
-          <div class="stat-title">Total Requests</div>
+          <div class="stat-title">Total requests</div>
           <div class="stat-value">{{ convertNum(stats.total_requests) }}</div>
-          <div class="stat-desc">Last 30 days</div>
+          <div class="stat-desc"></div>
         </div>
 
         <div class="stat">
-          <div class="stat-title">Errors</div>
-          <div class="stat-value">{{ convertNum(stats.error_count) }}</div>
-          <div class="stat-desc">400+ status</div>
+          <div class="stat-title">Total requests resolved</div>
+          <div class="stat-value">{{ convertNum(stats.total_requests_resolved) }}</div>
+          <div class="stat-desc">Status code 200+</div>
         </div>
 
          <div class="stat">
@@ -90,6 +93,27 @@ function convertNum(num: number): string {
         </div>
       </div>
 
+    </div>
+    
+    <h2>Error codes (30d)</h2>
+    <div class="stats shadow flex">
+      <div class="stat">
+          <div class="stat-title">Server error count</div>
+          <div class="stat-value">{{ convertNum(stats.server_error_count) }}</div>
+          <div class="stat-desc">500+ status codes</div>
+        </div>
+
+        <div class="stat">
+          <div class="stat-title">Client error count</div>
+          <div class="stat-value">{{ convertNum(stats.client_error_count) }}</div>
+          <div class="stat-desc">400+ status codes without 404</div>
+        </div>
+
+         <div class="stat">
+          <div class="stat-title">Status 404 count</div>
+          <div class="stat-value">{{ convertNum(stats.not_found_count) }}</div>
+          <div class="stat-desc">404 status codes</div>
+        </div>      
     </div>
 
   </div>

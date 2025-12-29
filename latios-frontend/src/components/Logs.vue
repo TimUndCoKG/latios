@@ -68,12 +68,16 @@ onMounted(() => {
 
         <tbody>
           <tr v-for="log in (logs as any[])" :key="log.id"> 
-            <td>{{ log.status_code }}</td>
+            <td :class="{ 
+              'not_found': log.status_code == 404,
+              'error': log.status_code >= 400 && log.status_code != 404,
+              'success': log.status_code >= 200 && log.status_code < 300,
+            }">{{ log.status_code }}</td>
             <td>{{ log.method }}</td>
             <td>{{ formatDate(log.timestamp) }}</td>
             <td>{{ log.host }}{{ log.path }}</td>
             <td>{{ log.remote_addr }}</td>
-            <td>{{ log.latency_ms }}</td>
+            <td>{{ log.latency_ms }}ms</td>
           </tr>
         </tbody>
       </table>
@@ -91,6 +95,18 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 1rem;
   gap: 2rem;
+}
+
+.error {
+  color: rgb(190, 30, 30);
+}
+
+.success {
+  color: rgb(43, 203, 88)
+}
+
+.not_found {
+  color: rgb(211, 77, 19);
 }
 
 </style>
