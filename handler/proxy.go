@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -61,7 +62,13 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 		originalDirector(req)
 
 		req.Host = r.Host
-		req.Header.Set("X-Forwarded-For", r.RemoteAddr)
+
+		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			clientIP = r.RemoteAddr
+		}
+
+		req.Header.Set("X-Forwarded-For", clientIP)
 
 		if r.TLS != nil {
 			req.Header.Set("X-Forwarded-Proto", "https")
