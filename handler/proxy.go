@@ -60,20 +60,24 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
-
 		req.Host = r.Host
 
-		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			clientIP = r.RemoteAddr
-		}
+		req.Header.Set("Origin", r.Header.Get("Origin"))
 
+		clientIP, _, _ := net.SplitHostPort(r.RemoteAddr)
 		req.Header.Set("X-Forwarded-For", clientIP)
+		req.Header.Set("X-Forwarded-Host", r.Host)
 
 		if r.TLS != nil {
 			req.Header.Set("X-Forwarded-Proto", "https")
 		} else {
 			req.Header.Set("X-Forwarded-Proto", "http")
+		}
+
+		// Should be redundant as httputil does it. Aber doppelt hält besser
+		if r.Header.Get("Upgrade") != "" {
+			req.Header.Set("Upgrade", r.Header.Get("Upgrade"))
+			req.Header.Set("Connection", "upgrade")
 		}
 	}
 	proxy.FlushInterval = -1 // for streaming and websocket support
