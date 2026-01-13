@@ -37,7 +37,6 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	result := db.Client.Where("domain = ?", host).First(&route)
 	if result.Error != nil {
 		serveNotFound(w, r)
-		// http.Error(w, "route not found", http.StatusNotFound)
 		return
 	}
 
@@ -55,17 +54,31 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
-	proxy.FlushInterval = -1 // for streaming support
+
+	// Header setup
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+
+		req.Host = r.Host
+		req.Header.Set("X-Forwarded-For", r.RemoteAddr)
+
+		if r.TLS != nil {
+			req.Header.Set("X-Forwarded-Proto", "https")
+		} else {
+			req.Header.Set("X-Forwarded-Proto", "http")
+		}
+	}
+	proxy.FlushInterval = -1 // for streaming and websocket support
 
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		// Add a header
 		resp.Header.Set("X-Proxied-By", "Latios")
 
 		// Log status code and headers
 		// log.Printf("%sProxied response: %d %s", logPrefix, resp.StatusCode, resp.Status)
-		for k, v := range resp.Header {
-			log.Printf("%sHeader: %s=%v", logPrefix, k, v)
-		}
+		// for k, v := range resp.Header {
+		// 	log.Printf("%sHeader: %s=%v", logPrefix, k, v)
+		// }
 
 		return nil
 	}
