@@ -73,6 +73,7 @@ func GetCertificate() *tls.Certificate {
 func getCertificate(domain string) (*tls.Certificate, error) {
 	cacheMutex.RLock()
 	if cert, ok := certCache[domain]; ok {
+		cacheMutex.RUnlock()
 		return cert, nil
 	}
 	cacheMutex.RUnlock()
