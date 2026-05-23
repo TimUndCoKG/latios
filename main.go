@@ -29,11 +29,11 @@ func main() {
 	db.InitDB()
 
 	if os.Getenv("ENVIRONMENT") == "live" {
-		log.Println("[CERTS] Renewing existing certificates...")
-		certs.RenewCerts()
-
 		log.Println("[CERTS] Creating new certificates (if needed)...")
 		certs.CreateCertificates()
+
+		log.Println("[CERTS] Renewing existing certificates...")
+		certs.RenewCerts()
 	}
 
 	router := http.NewServeMux()
