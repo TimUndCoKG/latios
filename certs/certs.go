@@ -6,12 +6,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/timsalokat/latios_proxy/config"
 )
 
 var certCache = make(map[string]*tls.Certificate)
+var cacheMutex sync.RWMutex
 var certBasePath = "/etc/letsencrypt/live"
 
 func RenewCerts() {
@@ -39,6 +41,10 @@ func RenewCerts() {
 				log.Printf("Renewal output: %s", string(out))
 			}
 
+			cacheMutex.Lock()
+			certCache = make(map[string]*tls.Certificate)
+			cacheMutex.Unlock()
+
 			time.Sleep(12 * time.Hour)
 		}
 	}()
@@ -55,26 +61,21 @@ func CreateCertificates() error {
 	return nil
 }
 
-func GetCertificates() []tls.Certificate {
+func GetCertificate() *tls.Certificate {
 	baseCertificate, err := getCertificate(config.GetDomain())
 	if err != nil {
 		log.Printf("Error obtaining certificate for base domain: %v", err)
 		os.Exit(1)
 	}
-
-	// subCertificate, err := getCertificate(config.GetWildcardDomain())
-	// if err != nil {
-	// 	log.Printf("Error obtaining certificate for wildcard domain: %v", err)
-	// 	os.Exit(1)
-	// }
-	// return []tls.Certificate{*baseCertificate, *subCertificate}
-	return []tls.Certificate{*baseCertificate}
+	return baseCertificate
 }
 
 func getCertificate(domain string) (*tls.Certificate, error) {
+	cacheMutex.RLock()
 	if cert, ok := certCache[domain]; ok {
 		return cert, nil
 	}
+	cacheMutex.RUnlock()
 
 	certPath := filepath.Join(certBasePath, domain, "fullchain.pem")
 	keyPath := filepath.Join(certBasePath, domain, "privkey.pem")
@@ -94,7 +95,11 @@ func getCertificate(domain string) (*tls.Certificate, error) {
 		return nil, err
 	}
 	log.Printf("Loaded cert for domain: %s", domain)
+
+	cacheMutex.Lock()
 	certCache[domain] = &cert
+	cacheMutex.Unlock()
+
 	return &cert, nil
 }
 

@@ -73,7 +73,9 @@ func serve(router http.Handler) {
 					tls.CurveP384,
 					tls.CurveP256,
 				},
-				Certificates: certs.GetCertificates(),
+				GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+					return certs.GetCertificate(), nil
+				},
 			},
 		}
 
