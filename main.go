@@ -67,6 +67,12 @@ func serve(router http.Handler) {
 			Addr:    ":443",
 			Handler: router,
 			TLSConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				CurvePreferences: []tls.CurveID{
+					tls.CurveP521,
+					tls.CurveP384,
+					tls.CurveP256,
+				},
 				Certificates: certs.GetCertificates(),
 			},
 		}
