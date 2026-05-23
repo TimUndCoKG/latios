@@ -1,158 +1,47 @@
 package certs
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"sync"
-	"time"
 
+	"github.com/caddyserver/certmagic"
+	"github.com/libdns/cloudflare"
 	"github.com/timsalokat/latios_proxy/config"
 )
 
-var certCache = make(map[string]*tls.Certificate)
-var cacheMutex sync.RWMutex
-var certBasePath = "/etc/letsencrypt/live"
-
-func RenewCerts() {
-	go func() {
-		for {
-			log.Println("Starting cert renewal...")
-
-			credFile, err := createCredentialFile()
-			if err != nil {
-				log.Fatal("Couldnt get cloudflare credential")
-			}
-
-			cmd := exec.Command("certbot", "renew",
-				"--dns-cloudflare",
-				"--dns-cloudflare-credentials", credFile.Name(),
-				"--quiet")
-
-			credFile.Close()
-			os.Remove(credFile.Name())
-
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				log.Printf("Renewal error: %v\n%s", err, string(out))
-			} else {
-				log.Printf("Renewal output: %s", string(out))
-			}
-
-			cacheMutex.Lock()
-			certCache = make(map[string]*tls.Certificate)
-			cacheMutex.Unlock()
-
-			time.Sleep(12 * time.Hour)
-		}
-	}()
-}
-
-func CreateCertificates() error {
-	_, err := getCertificate(config.GetDomain())
-	if err != nil {
-		err = createCertificate(config.GetDomain())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func GetCertificate() *tls.Certificate {
-	baseCertificate, err := getCertificate(config.GetDomain())
-	if err != nil {
-		log.Printf("Error obtaining certificate for base domain: %v", err)
-		os.Exit(1)
-	}
-	return baseCertificate
-}
-
-func getCertificate(domain string) (*tls.Certificate, error) {
-	cacheMutex.RLock()
-	if cert, ok := certCache[domain]; ok {
-		cacheMutex.RUnlock()
-		return cert, nil
-	}
-	cacheMutex.RUnlock()
-
-	certPath := filepath.Join(certBasePath, domain, "fullchain.pem")
-	keyPath := filepath.Join(certBasePath, domain, "privkey.pem")
-
-	if _, err := os.Stat(certPath); os.IsNotExist(err) {
-		log.Printf("Cert not found for domain: %s", domain)
-		return nil, err
-	}
-	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		log.Printf("Key not found for domain: %s", domain)
-		return nil, err
-	}
-
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
-	if err != nil {
-		log.Printf("Failed loading cert for %s: %v", domain, err)
-		return nil, err
-	}
-	log.Printf("Loaded cert for domain: %s", domain)
-
-	cacheMutex.Lock()
-	certCache[domain] = &cert
-	cacheMutex.Unlock()
-
-	return &cert, nil
-}
-
-func createCertificate(domain string) error {
-	// clear any stale lock
-	_ = os.Remove("/var/lib/letsencrypt/.certbot.lock")
-
-	credFile, err := createCredentialFile()
-	if err != nil {
-		log.Fatal("Couldnt get cloudflare credential")
-	}
-	defer credFile.Close()
-	defer os.Remove(credFile.Name())
-
-	cmd := exec.Command(
-		"certbot",
-		"certonly",
-		"--dns-cloudflare",
-		"--dns-cloudflare-credentials", credFile.Name(),
-		"-d", domain,
-		"-d", "*."+domain,
-		"--agree-tos",
-		"--no-eff-email",
-		"-m", "admin@"+domain,
-		"--non-interactive",
-	)
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("Certbot failed for %s: %v\nOutput: %s", domain, err, string(out))
-		return err
-	}
-
-	log.Printf("Certbot succeeded for %s:\n%s", domain, string(out))
-	return nil
-}
-
-func createCredentialFile() (*os.File, error) {
+func SetupTLSConfig() *tls.Config {
+	domain := config.GetDomain()
 	token := os.Getenv("CF_API_TOKEN")
+
 	if token == "" {
-		log.Fatal("CF_API_TOKEN not set")
+		log.Fatal("[CERTS] Cloudflare API token not set")
 	}
 
-	credFile, err := os.CreateTemp("", "cloudflare.ini")
+	log.Println("[CERTS] Configuring certmagic with Cloudflare...")
+
+	certmagic.DefaultACME.DNS01Solver = &certmagic.DNS01Solver{
+		DNSManager: certmagic.DNSManager{
+			DNSProvider: &cloudflare.Provider{
+				APIToken: token,
+			},
+		},
+	}
+
+	certmagic.DefaultACME.Agreed = true
+	certmagic.DefaultACME.Email = "admin@" + domain
+
+	// certmagic.DefaultACME.CA = certmagic.LetsEncryptStagingCA
+
+	cfg := certmagic.NewDefault()
+	err := cfg.ManageSync(context.Background(), []string{
+		domain,
+		"*." + domain,
+	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("[CERTS] Failed to manage certificates: %v", err)
 	}
 
-	_, err = credFile.WriteString("dns_cloudflare_api_token = " + token)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return credFile, nil
+	return cfg.TLSConfig()
 }

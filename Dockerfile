@@ -15,27 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o latios main.go
 # Stage 2: Run
 FROM alpine:latest
 
-RUN apk add --no-cache \
-    ca-certificates \
-    gcc \
-    musl-dev \
-    python3 \
-    py3-pip \
-    libffi-dev \
-    openssl-dev \
-    bash \
-    curl \
-    tzdata
-
-# Create and activate virtual environment, then install certbot inside it
-RUN python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip \
-    && /opt/venv/bin/pip install certbot certbot-dns-cloudflare \
-    && mkdir -p /var/www/html
-
-HEALTHCHECK --interval=15s --timeout=5s --retries=5 --start-period=5s CMD curl -f http://localhost:80/latios-api/health || exit 1
-
-ENV PATH="/opt/venv/bin:$PATH"
+# Install ca-vertificates for tls management
+RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"embed"
 	"log"
 	"net/http"
@@ -27,14 +26,6 @@ func main() {
 
 	log.Println("[DB] Initializing database...")
 	db.InitDB()
-
-	if os.Getenv("ENVIRONMENT") == "live" {
-		log.Println("[CERTS] Creating new certificates (if needed)...")
-		certs.CreateCertificates()
-
-		log.Println("[CERTS] Renewing existing certificates...")
-		certs.RenewCerts()
-	}
 
 	router := http.NewServeMux()
 
@@ -64,19 +55,9 @@ func serve(router http.Handler) {
 
 		log.Println("[HTTPS] Preparing HTTPS server on :443")
 		httpsServer := &http.Server{
-			Addr:    ":443",
-			Handler: router,
-			TLSConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-				CurvePreferences: []tls.CurveID{
-					tls.CurveP521,
-					tls.CurveP384,
-					tls.CurveP256,
-				},
-				GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-					return certs.GetCertificate(), nil
-				},
-			},
+			Addr:      ":443",
+			Handler:   router,
+			TLSConfig: certs.SetupTLSConfig(),
 		}
 
 		go func() {
