@@ -84,6 +84,7 @@ func ProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Set("X-Proxied-By", "Latios")
+		resp.Header.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 
 		// Log status code and headers
 		// log.Printf("%sProxied response: %d %s", logPrefix, resp.StatusCode, resp.Status)
